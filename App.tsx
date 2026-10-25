@@ -19,7 +19,7 @@ export default function App() {
   const sessionSetup = useMemo(() => sessionSetupOf(setup), [setup]);
   const { snapshot, start, stop } = useSession(sessionSetup);
   const { width } = useWindowDimensions();
-  const pressHandlers = useScreenGesture(snapshot != null, start, stop);
+  const { pressHandlers, roundOpacity } = useScreenGesture(snapshot != null, start, stop);
   // Until the face loads the round stays hidden, rather than flashing in the system font.
   // Should it fail to load, the round falls back to the system font.
   const [fontLoaded, fontError] = useFonts({ Unbounded_900Black });
@@ -34,13 +34,16 @@ export default function App() {
       {snapshot && <KeepAwake />}
       {!snapshot && <SetupCards setup={setup} onChange={setSetup} />}
       {snapshot && (fontLoaded || fontError) && (
-        <Animated.Text
-          style={[styles.round, { color: ink, fontSize: width * ROUND_FONT_SIZE_PER_WIDTH }]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-        >
-          {snapshot.round}
-        </Animated.Text>
+        // Fading the round's opacity over the solid background fades it into the background colour.
+        <Animated.View style={{ opacity: roundOpacity }}>
+          <Animated.Text
+            style={[styles.round, { color: ink, fontSize: width * ROUND_FONT_SIZE_PER_WIDTH }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {snapshot.round}
+          </Animated.Text>
+        </Animated.View>
       )}
       {snapshot && (
         <Animated.Text style={[styles.elapsed, { color: ink }]}>{formatElapsed(snapshot.elapsedMs)}</Animated.Text>

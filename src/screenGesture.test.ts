@@ -8,9 +8,16 @@ function setup(running: boolean) {
   const onStop = jest.fn(() => {
     state.running = false;
   });
-  const onHoldHalfway = jest.fn();
-  const gesture = createScreenGesture({ isRunning: () => state.running, onStart, onStop, onHoldHalfway });
-  return { gesture, onStart, onStop, onHoldHalfway };
+  const onHoldBegin = jest.fn();
+  const onHoldAbandoned = jest.fn();
+  const gesture = createScreenGesture({
+    isRunning: () => state.running,
+    onStart,
+    onStop,
+    onHoldBegin,
+    onHoldAbandoned,
+  });
+  return { gesture, onStart, onStop, onHoldBegin, onHoldAbandoned };
 }
 
 beforeEach(() => jest.useFakeTimers());
@@ -44,13 +51,14 @@ describe('screen gesture while idle', () => {
     expect(onStop).not.toHaveBeenCalled();
   });
 
-  it('never holds', () => {
-    const { gesture, onHoldHalfway } = setup(false);
+  it('never begins a hold', () => {
+    const { gesture, onHoldBegin, onHoldAbandoned } = setup(false);
     gesture.pressIn();
     jest.advanceTimersByTime(HOLD_TO_STOP_MS);
     gesture.pressOut();
     gesture.tap();
-    expect(onHoldHalfway).not.toHaveBeenCalled();
+    expect(onHoldBegin).not.toHaveBeenCalled();
+    expect(onHoldAbandoned).not.toHaveBeenCalled();
   });
 });
 
@@ -108,7 +116,8 @@ describe('screen gesture while running', () => {
       isRunning: () => state.running,
       onStart: jest.fn(),
       onStop,
-      onHoldHalfway: jest.fn(),
+      onHoldBegin: jest.fn(),
+      onHoldAbandoned: jest.fn(),
     });
     gesture.pressIn();
     state.running = false;
@@ -117,46 +126,61 @@ describe('screen gesture while running', () => {
   });
 
   it('drops a pending hold when cancelled, e.g. as the session ends on its own', () => {
-    const { gesture, onStart, onStop, onHoldHalfway } = setup(true);
+    const { gesture, onStart, onStop } = setup(true);
     gesture.pressIn();
     gesture.cancel();
     jest.advanceTimersByTime(HOLD_TO_STOP_MS);
     gesture.pressOut();
     gesture.tap();
-    expect(onHoldHalfway).not.toHaveBeenCalled();
     expect(onStop).not.toHaveBeenCalled();
     expect(onStart).not.toHaveBeenCalled();
   });
 
-  it('signals once when the hold reaches halfway, before the stop lands', () => {
-    const { gesture, onStop, onHoldHalfway } = setup(true);
+  it('reports a hold beginning as soon as it is pressed', () => {
+    const { gesture, onHoldBegin, onHoldAbandoned } = setup(true);
     gesture.pressIn();
-    jest.advanceTimersByTime(HOLD_TO_STOP_MS / 2 - 1);
-    expect(onHoldHalfway).not.toHaveBeenCalled();
-    jest.advanceTimersByTime(1);
-    expect(onHoldHalfway).toHaveBeenCalledTimes(1);
+    expect(onHoldBegin).toHaveBeenCalledTimes(1);
+    expect(onHoldAbandoned).not.toHaveBeenCalled();
+  });
+
+  it('reports the hold abandoned when released early', () => {
+    const { gesture, onStop, onHoldAbandoned } = setup(true);
+    gesture.pressIn();
+    jest.advanceTimersByTime(HOLD_TO_STOP_MS - 1);
+    gesture.pressOut();
+    expect(onHoldAbandoned).toHaveBeenCalledTimes(1);
+    gesture.tap();
+    jest.advanceTimersByTime(HOLD_TO_STOP_MS);
+    expect(onHoldAbandoned).toHaveBeenCalledTimes(1);
     expect(onStop).not.toHaveBeenCalled();
-    jest.advanceTimersByTime(HOLD_TO_STOP_MS / 2);
-    expect(onHoldHalfway).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports the hold abandoned when cancelled', () => {
+    const { gesture, onHoldAbandoned } = setup(true);
+    gesture.pressIn();
+    gesture.cancel();
+    expect(onHoldAbandoned).toHaveBeenCalledTimes(1);
+    gesture.pressOut();
+    expect(onHoldAbandoned).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops a completed hold without reporting it abandoned', () => {
+    const { gesture, onStop, onHoldAbandoned } = setup(true);
+    gesture.pressIn();
+    jest.advanceTimersByTime(HOLD_TO_STOP_MS);
+    gesture.pressOut();
+    gesture.tap();
+    gesture.cancel();
     expect(onStop).toHaveBeenCalledTimes(1);
+    expect(onHoldAbandoned).not.toHaveBeenCalled();
   });
 
-  it('gives no signal when released before halfway', () => {
-    const { gesture, onHoldHalfway } = setup(true);
+  it('begins a fresh hold each time after an early release', () => {
+    const { gesture, onHoldBegin, onHoldAbandoned } = setup(true);
     gesture.pressIn();
-    jest.advanceTimersByTime(HOLD_TO_STOP_MS / 2 - 1);
     gesture.pressOut();
-    jest.advanceTimersByTime(HOLD_TO_STOP_MS);
-    expect(onHoldHalfway).not.toHaveBeenCalled();
-  });
-
-  it('gives no further signal when released after halfway', () => {
-    const { gesture, onStop, onHoldHalfway } = setup(true);
     gesture.pressIn();
-    jest.advanceTimersByTime(HOLD_TO_STOP_MS / 2);
-    gesture.pressOut();
-    jest.advanceTimersByTime(HOLD_TO_STOP_MS);
-    expect(onHoldHalfway).toHaveBeenCalledTimes(1);
-    expect(onStop).not.toHaveBeenCalled();
+    expect(onHoldBegin).toHaveBeenCalledTimes(2);
+    expect(onHoldAbandoned).toHaveBeenCalledTimes(1);
   });
 });
