@@ -52,8 +52,41 @@ export function swapOrder(setup: Setup): Setup {
   return { ...setup, order: [second, first] };
 }
 
+/** Bounds move in steps of this many seconds. */
+export const BOUNDS_STEP_SECONDS = 5;
+/** The shortest a bound can be: 0:05. */
+export const SHORTEST_BOUND_SECONDS = 5;
+/** The longest a bound can be: 59:55. */
+export const LONGEST_BOUND_SECONDS = 3595;
+
+/**
+ * Sets one or both of a phase's bounds, snapping each to the nearest 5 seconds
+ * within 0:05–59:55. The shortest never ends up above the longest: the bound
+ * being set wins and pushes the other along (the shortest, if both are given).
+ */
+export function setBounds(setup: Setup, phase: Phase, change: Partial<Bounds>): Setup {
+  const current = setup.phases[phase].bounds;
+  let minSeconds = snap(change.minSeconds ?? current.minSeconds);
+  let maxSeconds = snap(change.maxSeconds ?? current.maxSeconds);
+  if (minSeconds > maxSeconds) {
+    if (change.minSeconds !== undefined) maxSeconds = minSeconds;
+    else minSeconds = maxSeconds;
+  }
+  const bounds = { minSeconds, maxSeconds };
+  return { ...setup, phases: { ...setup.phases, [phase]: { ...setup.phases[phase], bounds } } };
+}
+
+function snap(seconds: number): number {
+  const snapped = Math.round(seconds / BOUNDS_STEP_SECONDS) * BOUNDS_STEP_SECONDS;
+  return Math.min(LONGEST_BOUND_SECONDS, Math.max(SHORTEST_BOUND_SECONDS, snapped));
+}
+
 /** A phase's bounds as `m:ss–m:ss`. */
 export function formatBounds({ minSeconds, maxSeconds }: Bounds): string {
-  const format = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-  return `${format(minSeconds)}–${format(maxSeconds)}`;
+  return `${formatDuration(minSeconds)}–${formatDuration(maxSeconds)}`;
+}
+
+/** A duration as `m:ss`. */
+export function formatDuration(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }

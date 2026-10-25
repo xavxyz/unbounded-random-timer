@@ -1,19 +1,28 @@
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { BoundsSheet } from './BoundsSheet';
 import { PHASE_COLOURS } from './palette';
 import type { Phase } from './sessionClock';
-import { cardsOf, formatBounds, setPhaseEnabled, swapOrder, type Setup } from './setup';
+import { cardsOf, formatBounds, setBounds, setPhaseEnabled, swapOrder, type Setup } from './setup';
 
 type Props = { setup: Setup; onChange: (setup: Setup) => void };
 
 /**
- * The phase cards in round order, with the swap control between them. Every
- * touch on them stays here, so it never reaches the grey that starts a session.
+ * The phase cards in round order, with the swap control between them. Tapping
+ * a card opens the sheet that sets its bounds. Every touch on them stays here,
+ * so it never reaches the grey that starts a session.
  */
 export function SetupCards({ setup, onChange }: Props) {
   const cards = cardsOf(setup);
+  const [editing, setEditing] = useState<Phase | null>(null);
   return (
     <View style={styles.stack}>
+      <BoundsSheet
+        phase={editing}
+        bounds={editing && setup.phases[editing].bounds}
+        onChange={(change) => editing && onChange(setBounds(setup, editing, change))}
+        onClose={() => setEditing(null)}
+      />
       {cards.map((card, index) => {
         const { background, ink } = PHASE_COLOURS[card.phase];
         return (
@@ -29,10 +38,12 @@ export function SetupCards({ setup, onChange }: Props) {
                 <Text style={styles.swapGlyph}>⇅</Text>
               </Pressable>
             )}
-            {/* Claims the touch; it will open the bounds sheet in a later ticket. */}
             <Pressable
               style={[styles.card, { backgroundColor: background, opacity: card.enabled ? 1 : 0.5 }]}
+              accessibilityRole="button"
               accessibilityLabel={`${card.phase} ${formatBounds(card.bounds)}`}
+              accessibilityHint="Sets the shortest and longest durations"
+              onPress={() => setEditing(card.phase)}
             >
               <Text style={[styles.bounds, { color: ink }]}>{formatBounds(card.bounds)}</Text>
               {/* The native switch handles its own touch; this wrapper keeps it from the grey. */}

@@ -4,6 +4,7 @@
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/unbounded": "^0.4.1",
+    "@expo/ui": "~58.0.23",
     "expo": "~58.0.17",
     "expo-asset": "~58.0.18",
     "expo-audio": "~58.0.10",
