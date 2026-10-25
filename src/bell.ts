@@ -1,4 +1,5 @@
 import type { AudioPlayer } from 'expo-audio';
+import type { Phase } from './sessionClock';
 
 export type BellPlayer = Pick<AudioPlayer, 'seekTo' | 'play'>;
 
@@ -10,4 +11,12 @@ export type BellPlayer = Pick<AudioPlayer, 'seekTo' | 'play'>;
 export async function ringFromTop(player: BellPlayer) {
   await player.seekTo(0);
   player.play();
+}
+
+/** Each phase owns its sound: the bell for White, a lower double strike for Black. */
+export type PhaseSounds = Record<Phase, BellPlayer>;
+
+/** Rings the sound of the phase that is beginning, from the top. */
+export function ringPhase(sounds: PhaseSounds, phase: Phase) {
+  return ringFromTop(sounds[phase]);
 }

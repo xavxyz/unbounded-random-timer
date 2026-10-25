@@ -1,4 +1,4 @@
-import { ringFromTop, type BellPlayer } from './bell';
+import { ringFromTop, ringPhase, type BellPlayer } from './bell';
 
 /**
  * Mimics expo-audio on iOS: `seekTo` lands asynchronously while `play` acts at
@@ -43,5 +43,32 @@ describe('bell', () => {
       playOut();
     }
     expect(rings()).toBe(4);
+  });
+});
+
+describe('phase sounds', () => {
+  function phaseSounds() {
+    const white = fakePlayer();
+    const black = fakePlayer();
+    return { white, black, players: { white: white.player, black: black.player } };
+  }
+
+  it('begins White with the bell and Black with its own sound', async () => {
+    const { white, black, players } = phaseSounds();
+    await ringPhase(players, 'white');
+    expect([white.rings(), black.rings()]).toEqual([1, 0]);
+    await ringPhase(players, 'black');
+    expect([white.rings(), black.rings()]).toEqual([1, 1]);
+  });
+
+  it('plays each sound from the top at every phase start', async () => {
+    const { white, black, players } = phaseSounds();
+    for (let round = 1; round <= 3; round++) {
+      await ringPhase(players, 'white');
+      white.playOut();
+      await ringPhase(players, 'black');
+      black.playOut();
+    }
+    expect([white.rings(), black.rings()]).toEqual([3, 3]);
   });
 });

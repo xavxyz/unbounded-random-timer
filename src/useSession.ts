@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { AppState } from 'react-native';
 import { keepsSessionRunning } from './appLifecycle';
-import { startSession, type Session, type SessionSetup, type SessionSnapshot } from './sessionClock';
-import { useBell } from './useBell';
+import { startSession, type Phase, type Session, type SessionSetup, type SessionSnapshot } from './sessionClock';
+import { usePhaseSound } from './useBell';
 
 const POLL_MS = 250;
 
@@ -14,25 +14,28 @@ const DEFAULT_SETUP: SessionSetup = [
 ];
 
 /**
- * Runs a session against the wall clock, ringing the bell with a light haptic
- * at every phase start, round 1's first phase included. `snapshot` is null
- * while idle.
+ * Runs a session against the wall clock, ringing the phase's own sound with a
+ * light haptic at every phase start, round 1's first phase included.
+ * `snapshot` is null while idle.
  */
 export function useSession() {
-  const ringBell = useBell();
+  const ringPhase = usePhaseSound();
   const [session, setSession] = useState<Session | null>(null);
   const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
 
-  const signalPhase = useCallback(() => {
-    ringBell();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [ringBell]);
+  const signalPhase = useCallback(
+    (phase: Phase) => {
+      ringPhase(phase);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    [ringPhase],
+  );
 
   // One signal per report, even when several phase starts were crossed at once.
   const moveTo = useCallback(
     (current: Session, now: number) => {
       const next = current.advanceTo(now);
-      if (next.phaseBegan) signalPhase();
+      if (next.phaseBegan) signalPhase(next.phase);
       setSnapshot(next);
     },
     [signalPhase],
