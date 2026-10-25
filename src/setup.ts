@@ -122,12 +122,16 @@ function restorePhase(saved: unknown, fallback: Setup['phases'][Phase]): Setup['
   };
 }
 
-/** Bounds are restored as a pair: a missing end comes from the defaults, but any invalid end drops the pair. */
+/**
+ * Each end of the bounds is restored on its own, a missing or invalid end
+ * coming from the defaults. Should the result have the shortest above the
+ * longest, the default pair is used instead.
+ */
 function restoreBounds(saved: unknown, fallback: Bounds): Bounds {
   if (!isRecord(saved)) return fallback;
-  const { minSeconds = fallback.minSeconds, maxSeconds = fallback.maxSeconds } = saved;
-  if (!isBoundSeconds(minSeconds) || !isBoundSeconds(maxSeconds) || minSeconds > maxSeconds) return fallback;
-  return { minSeconds, maxSeconds };
+  const minSeconds = isBoundSeconds(saved.minSeconds) ? saved.minSeconds : fallback.minSeconds;
+  const maxSeconds = isBoundSeconds(saved.maxSeconds) ? saved.maxSeconds : fallback.maxSeconds;
+  return minSeconds > maxSeconds ? fallback : { minSeconds, maxSeconds };
 }
 
 /** A bound is one setBounds could produce: SHORTEST_BOUND_SECONDS–LONGEST_BOUND_SECONDS, in steps of BOUNDS_STEP_SECONDS. */

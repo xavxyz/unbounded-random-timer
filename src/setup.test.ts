@@ -195,15 +195,39 @@ describe('restoring a saved setup', () => {
     });
   });
 
+  const restoredWhiteBounds = (minSeconds: unknown, maxSeconds: unknown) =>
+    restoreSetup(JSON.stringify({ phases: { white: { bounds: { minSeconds, maxSeconds } } } })).phases.white.bounds;
+
   it.each([
-    ['not numbers', '"1:00"', '"2:00"'],
-    ['shorter than 0:05', 0, 60],
-    ['longer than 59:55', 60, 3600],
-    ['off the 5 s steps', 62, 120],
-    ['not whole seconds', 60, 120.5],
-    ['shortest above longest', 300, 120],
-  ])('keeps the default bounds when the saved bounds are %s', (_, minSeconds, maxSeconds) => {
-    const stored = JSON.stringify({ phases: { white: { bounds: { minSeconds, maxSeconds } } } });
-    expect(restoreSetup(stored).phases.white.bounds).toEqual({ minSeconds: 180, maxSeconds: 420 });
+    ['not a number', '"1:00"'],
+    ['shorter than 0:05', 0],
+    ['longer than 59:55', 3600],
+    ['off the 5 s steps', 62],
+    ['not whole seconds', 60.5],
+  ])('keeps a saved longest when the saved shortest is %s, taking the default shortest', (_, minSeconds) => {
+    expect(restoredWhiteBounds(minSeconds, 600)).toEqual({ minSeconds: 180, maxSeconds: 600 });
+  });
+
+  it.each([
+    ['not a number', '"2:00"'],
+    ['shorter than 0:05', 0],
+    ['longer than 59:55', 3600],
+    ['off the 5 s steps', 122],
+    ['not whole seconds', 120.5],
+  ])('keeps a saved shortest when the saved longest is %s, taking the default longest', (_, maxSeconds) => {
+    expect(restoredWhiteBounds(60, maxSeconds)).toEqual({ minSeconds: 60, maxSeconds: 420 });
+  });
+
+  it('keeps the default bounds when both saved ends are invalid', () => {
+    expect(restoredWhiteBounds('"1:00"', 3600)).toEqual({ minSeconds: 180, maxSeconds: 420 });
+  });
+
+  it('keeps the default bounds when the saved shortest is above the saved longest', () => {
+    expect(restoredWhiteBounds(300, 120)).toEqual({ minSeconds: 180, maxSeconds: 420 });
+  });
+
+  it('keeps the default bounds when the one valid end and its default would cross', () => {
+    expect(restoredWhiteBounds(600, 3600)).toEqual({ minSeconds: 180, maxSeconds: 420 });
+    expect(restoredWhiteBounds(0, 60)).toEqual({ minSeconds: 180, maxSeconds: 420 });
   });
 });
