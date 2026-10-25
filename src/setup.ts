@@ -90,3 +90,75 @@ export function formatBounds({ minSeconds, maxSeconds }: Bounds): string {
 export function formatDuration(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
+
+/**
+ * Turns a saved setup (or `null` when nothing was saved) back into a valid setup.
+ * Whatever is missing, unreadable or invalid comes from the defaults.
+ */
+export function restoreSetup(stored: string | null): Setup {
+  const saved = parse(stored);
+  if (!isRecord(saved)) return DEFAULT_SETUP;
+  const phases = isRecord(saved.phases) ? saved.phases : {};
+  const white = restorePhase(phases.white, DEFAULT_SETUP.phases.white);
+  const black = restorePhase(phases.black, DEFAULT_SETUP.phases.black);
+  // At least one phase is always enabled: a save with both off takes the default enabled phases.
+  const noneEnabled = !white.enabled && !black.enabled;
+  return {
+    order: isOrder(saved.order) ? saved.order : DEFAULT_SETUP.order,
+    phases: noneEnabled
+      ? {
+          white: { ...white, enabled: DEFAULT_SETUP.phases.white.enabled },
+          black: { ...black, enabled: DEFAULT_SETUP.phases.black.enabled },
+        }
+      : { white, black },
+  };
+}
+
+function restorePhase(saved: unknown, fallback: Setup['phases'][Phase]): Setup['phases'][Phase] {
+  if (!isRecord(saved)) return fallback;
+  return {
+    enabled: typeof saved.enabled === 'boolean' ? saved.enabled : fallback.enabled,
+    bounds: restoreBounds(saved.bounds, fallback.bounds),
+  };
+}
+
+/** Bounds are restored as a pair: a missing end comes from the defaults, but any invalid end drops the pair. */
+function restoreBounds(saved: unknown, fallback: Bounds): Bounds {
+  if (!isRecord(saved)) return fallback;
+  const { minSeconds = fallback.minSeconds, maxSeconds = fallback.maxSeconds } = saved;
+  if (!isBoundSeconds(minSeconds) || !isBoundSeconds(maxSeconds) || minSeconds > maxSeconds) return fallback;
+  return { minSeconds, maxSeconds };
+}
+
+/** A bound is one setBounds could produce: SHORTEST_BOUND_SECONDS–LONGEST_BOUND_SECONDS, in steps of BOUNDS_STEP_SECONDS. */
+function isBoundSeconds(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value % BOUNDS_STEP_SECONDS === 0 &&
+    value >= SHORTEST_BOUND_SECONDS &&
+    value <= LONGEST_BOUND_SECONDS
+  );
+}
+
+function parse(stored: string | null): unknown {
+  if (stored == null) return undefined;
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return undefined;
+  }
+}
+
+function isOrder(value: unknown): value is Setup['order'] {
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    value.includes('white') &&
+    value.includes('black')
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}

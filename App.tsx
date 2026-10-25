@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { Unbounded_900Black, useFonts } from '@expo-google-fonts/unbounded';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Animated, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { KeepAwake } from './src/KeepAwake';
 import { PHASE_COLOURS, SETUP_GREY } from './src/palette';
@@ -8,6 +8,7 @@ import { formatElapsed } from './src/sessionClock';
 import { DEFAULT_SETUP, sessionSetupOf } from './src/setup';
 import { SetupCards } from './src/SetupCards';
 import { useColourFade } from './src/useColourFade';
+import { useSavedSetup } from './src/useSavedSetup';
 import { useScreenGesture } from './src/useScreenGesture';
 import { useSession } from './src/useSession';
 
@@ -15,11 +16,16 @@ import { useSession } from './src/useSession';
 const ROUND_FONT_SIZE_PER_WIDTH = 0.38;
 
 export default function App() {
-  const [setup, setSetup] = useState(DEFAULT_SETUP);
-  const sessionSetup = useMemo(() => sessionSetupOf(setup), [setup]);
+  // Until the saved setup loads the setup screen shows nothing, rather than flashing the defaults,
+  // and tapping doesn't begin.
+  const [setup, setSetup] = useSavedSetup();
+  const sessionSetup = useMemo(() => sessionSetupOf(setup ?? DEFAULT_SETUP), [setup]);
   const { snapshot, start, stop } = useSession(sessionSetup);
+  const startOnceLoaded = useCallback(() => {
+    if (setup) start();
+  }, [setup, start]);
   const { width } = useWindowDimensions();
-  const { pressHandlers, roundOpacity } = useScreenGesture(snapshot != null, start, stop);
+  const { pressHandlers, roundOpacity } = useScreenGesture(snapshot != null, startOnceLoaded, stop);
   // Until the face loads the round stays hidden, rather than flashing in the system font.
   // Should it fail to load, the round falls back to the system font.
   const [fontLoaded, fontError] = useFonts({ Unbounded_900Black });
@@ -32,7 +38,7 @@ export default function App() {
     <Pressable style={styles.screen} {...pressHandlers}>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: background }]} />
       {snapshot && <KeepAwake />}
-      {!snapshot && <SetupCards setup={setup} onChange={setSetup} />}
+      {!snapshot && setup && <SetupCards setup={setup} onChange={setSetup} />}
       {snapshot && (fontLoaded || fontError) && (
         // Fading the round's opacity over the solid background fades it into the background colour.
         <Animated.View style={{ opacity: roundOpacity }}>
@@ -48,9 +54,11 @@ export default function App() {
       {snapshot && (
         <Animated.Text style={[styles.elapsed, { color: ink }]}>{formatElapsed(snapshot.elapsedMs)}</Animated.Text>
       )}
-      <Animated.Text style={[styles.hint, { color: ink }]}>
-        {snapshot ? 'hold anywhere to stop' : 'tap to begin'}
-      </Animated.Text>
+      {(snapshot || setup) && (
+        <Animated.Text style={[styles.hint, { color: ink }]}>
+          {snapshot ? 'hold anywhere to stop' : 'tap to begin'}
+        </Animated.Text>
+      )}
       <StatusBar style={colours.statusBar} />
     </Pressable>
   );
