@@ -1,9 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
 import { Unbounded_900Black, useFonts } from '@expo-google-fonts/unbounded';
+import { useMemo, useState } from 'react';
 import { Animated, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { KeepAwake } from './src/KeepAwake';
 import { PHASE_COLOURS, SETUP_GREY } from './src/palette';
 import { formatElapsed } from './src/sessionClock';
+import { DEFAULT_SETUP, sessionSetupOf } from './src/setup';
+import { SetupCards } from './src/SetupCards';
 import { useColourFade } from './src/useColourFade';
 import { useScreenGesture } from './src/useScreenGesture';
 import { useSession } from './src/useSession';
@@ -12,7 +15,9 @@ import { useSession } from './src/useSession';
 const ROUND_FONT_SIZE_PER_WIDTH = 0.38;
 
 export default function App() {
-  const { snapshot, start, stop } = useSession();
+  const [setup, setSetup] = useState(DEFAULT_SETUP);
+  const sessionSetup = useMemo(() => sessionSetupOf(setup), [setup]);
+  const { snapshot, start, stop } = useSession(sessionSetup);
   const { width } = useWindowDimensions();
   const pressHandlers = useScreenGesture(snapshot != null, start, stop);
   // Until the face loads the round stays hidden, rather than flashing in the system font.
@@ -22,10 +27,12 @@ export default function App() {
   const { background, ink } = useColourFade(colours);
 
   return (
-    // The whole screen is the control: there are no buttons.
+    // The whole screen is the control: tapping the grey begins, holding stops.
+    // Touches on the setup cards stay with the cards.
     <Pressable style={styles.screen} {...pressHandlers}>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: background }]} />
       {snapshot && <KeepAwake />}
+      {!snapshot && <SetupCards setup={setup} onChange={setSetup} />}
       {snapshot && (fontLoaded || fontError) && (
         <Animated.Text
           style={[styles.round, { color: ink, fontSize: width * ROUND_FONT_SIZE_PER_WIDTH }]}

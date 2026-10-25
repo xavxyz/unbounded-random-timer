@@ -7,18 +7,12 @@ import { useBell } from './useBell';
 
 const POLL_MS = 250;
 
-// Hard-coded until the setup screen exists.
-const DEFAULT_SETUP: SessionSetup = [
-  { phase: 'white', bounds: { minSeconds: 180, maxSeconds: 420 } },
-  { phase: 'black', bounds: { minSeconds: 20, maxSeconds: 40 } },
-];
-
 /**
  * Runs a session against the wall clock, ringing the bell with a light haptic
  * at every phase start, round 1's first phase included. `snapshot` is null
- * while idle.
+ * while idle. A session started with `start` uses `setup` as it is then.
  */
-export function useSession() {
+export function useSession(setup: SessionSetup) {
   const ringBell = useBell();
   const [session, setSession] = useState<Session | null>(null);
   const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
@@ -40,10 +34,10 @@ export function useSession() {
 
   const start = useCallback(() => {
     const now = Date.now();
-    const next = startSession(DEFAULT_SETUP, now, Math.random);
+    const next = startSession(setup, now, Math.random);
     setSession(next);
     moveTo(next, now);
-  }, [moveTo]);
+  }, [setup, moveTo]);
 
   const stop = useCallback(() => {
     setSession(null);
