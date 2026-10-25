@@ -8,6 +8,7 @@ import { formatElapsed } from './src/sessionClock';
 import { DEFAULT_SETUP, sessionSetupOf } from './src/setup';
 import { SetupCards } from './src/SetupCards';
 import { useColourFade } from './src/useColourFade';
+import { useFadeIn } from './src/useFadeIn';
 import { useSavedSetup } from './src/useSavedSetup';
 import { useScreenGesture } from './src/useScreenGesture';
 import { useSession } from './src/useSession';
@@ -31,6 +32,9 @@ export default function App() {
   const [fontLoaded, fontError] = useFonts({ Unbounded_900Black });
   const colours = snapshot ? PHASE_COLOURS[snapshot.phase] : SETUP_GREY;
   const { background, ink } = useColourFade(colours);
+  // The setup screen fades in with the grey, so nothing sits at full contrast on a fading White or Black.
+  const showingSetup = !snapshot && setup != null;
+  const setupOpacity = useFadeIn(showingSetup);
 
   return (
     // The whole screen is the control: tapping the grey begins, holding stops.
@@ -38,7 +42,11 @@ export default function App() {
     <Pressable style={styles.screen} {...pressHandlers}>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: background }]} />
       {snapshot && <KeepAwake />}
-      {!snapshot && setup && <SetupCards setup={setup} onChange={setSetup} />}
+      {showingSetup && (
+        <Animated.View style={[styles.setup, { opacity: setupOpacity }]}>
+          <SetupCards setup={setup} onChange={setSetup} />
+        </Animated.View>
+      )}
       {snapshot && (fontLoaded || fontError) && (
         // Fading the round's opacity over the solid background fades it into the background colour.
         <Animated.View style={{ opacity: roundOpacity }}>
@@ -55,7 +63,7 @@ export default function App() {
         <Animated.Text style={[styles.elapsed, { color: ink }]}>{formatElapsed(snapshot.elapsedMs)}</Animated.Text>
       )}
       {(snapshot || setup) && (
-        <Animated.Text style={[styles.hint, { color: ink }]}>
+        <Animated.Text style={[styles.hint, { color: ink, opacity: snapshot ? 1 : setupOpacity }]}>
           {snapshot ? 'hold anywhere to stop' : 'tap to begin'}
         </Animated.Text>
       )}
@@ -69,6 +77,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  setup: {
+    width: '100%',
   },
   round: {
     fontFamily: 'Unbounded_900Black',
