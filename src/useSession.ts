@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { AppState } from 'react-native';
 import { keepsSessionRunning } from './appLifecycle';
-import { startSession, type Phase, type Session, type SessionSetup, type SessionSnapshot } from './sessionClock';
-import { usePhaseSound } from './useBell';
+import type { Phase } from './phase';
+import { startSession, type Session, type SessionSetup, type SessionSnapshot } from './sessionClock';
+import { usePhaseSound } from './usePhaseSound';
 
 const POLL_MS = 250;
 
@@ -14,16 +15,16 @@ const POLL_MS = 250;
  * as it is then.
  */
 export function useSession(setup: SessionSetup) {
-  const ringPhase = usePhaseSound();
+  const playPhaseSound = usePhaseSound();
   const [session, setSession] = useState<Session | null>(null);
   const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
 
   const signalPhase = useCallback(
     (phase: Phase) => {
-      ringPhase(phase);
+      playPhaseSound(phase);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     },
-    [ringPhase],
+    [playPhaseSound],
   );
 
   // One signal per report, even when several phase starts were crossed at once.

@@ -1,5 +1,5 @@
 import { BottomSheet, Column, Picker, Row, Text } from '@expo/ui';
-import type { Bounds, Phase } from './sessionClock';
+import type { Bounds } from './phase';
 import { BOUNDS_STEP_SECONDS, LONGEST_BOUND_SECONDS, SHORTEST_BOUND_SECONDS, formatDuration } from './setup';
 
 // Every duration a bound can take: 0:05, 0:10, … 59:55.
@@ -9,8 +9,7 @@ const DURATIONS = Array.from(
 );
 
 type Props = {
-  /** The phase whose bounds are being set, or null when the sheet is closed. */
-  phase: Phase | null;
+  /** The bounds of the phase being set, or null when the sheet is closed. */
   bounds: Bounds | null;
   onChange: (change: Partial<Bounds>) => void;
   onClose: () => void;
@@ -22,9 +21,9 @@ type Props = {
  * change goes through the setup's rules, so the wheels never show a shortest
  * above the longest.
  */
-export function BoundsSheet({ phase, bounds, onChange, onClose }: Props) {
+export function BoundsSheet({ bounds, onChange, onClose }: Props) {
   return (
-    <BottomSheet isPresented={phase != null} onDismiss={onClose}>
+    <BottomSheet isPresented={bounds != null} onDismiss={onClose}>
       {bounds && (
         <Row style={{ width: '100%', paddingBottom: 24 }}>
           <BoundWheel

@@ -1,27 +1,25 @@
 import { useCallback } from 'react';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
-import { ringPhase } from './bell';
-import type { Phase } from './sessionClock';
+import { ringFromTop } from './bell';
+import type { Phase } from './phase';
 
+// Each phase owns its sound: the soft bell for White, a lower double strike for Black.
 // Synthesised by scripts/synthesize-bell.mjs; swap in any recording.
-const BELL = require('../assets/bell.wav');
-const BLACK = require('../assets/black.wav');
+const WHITE_SOUND = require('../assets/bell.wav');
+const BLACK_SOUND = require('../assets/black.wav');
 
 // Set once at load, before any ring: sound through the iOS silent switch, and
 // mix with music rather than lowering or pausing it.
 setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'mixWithOthers' });
 
-/**
- * Returns a function that rings a phase's sound from the top: the soft bell
- * for White, its own sound for Black.
- */
+/** Returns a function that plays a phase's own sound from the top. */
 export function usePhaseSound() {
-  const white = useAudioPlayer(BELL);
-  const black = useAudioPlayer(BLACK);
+  const white = useAudioPlayer(WHITE_SOUND);
+  const black = useAudioPlayer(BLACK_SOUND);
 
   return useCallback(
     (phase: Phase) => {
-      ringPhase({ white, black }, phase);
+      ringFromTop(phase === 'white' ? white : black);
     },
     [white, black],
   );

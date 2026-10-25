@@ -1,8 +1,8 @@
 import { Fragment, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { BoundsSheet } from './BoundsSheet';
-import { PHASE_COLOURS } from './palette';
-import type { Phase } from './sessionClock';
+import { PHASE_COLOURS, SETUP_GREY } from './palette';
+import type { Phase } from './phase';
 import { cardsOf, formatBounds, setBounds, setPhaseEnabled, swapOrder, type Setup } from './setup';
 
 type Props = { setup: Setup; onChange: (setup: Setup) => void };
@@ -18,7 +18,6 @@ export function SetupCards({ setup, onChange }: Props) {
   return (
     <View style={styles.stack}>
       <BoundsSheet
-        phase={editing}
         bounds={editing && setup.phases[editing].bounds}
         onChange={(change) => editing && onChange(setBounds(setup, editing, change))}
         onClose={() => setEditing(null)}
@@ -52,7 +51,7 @@ export function SetupCards({ setup, onChange }: Props) {
                   value={card.enabled}
                   disabled={!card.canTurnOff}
                   onValueChange={(enabled) => onChange(setPhaseEnabled(setup, card.phase, enabled))}
-                  trackColor={{ true: TRACK_ON[card.phase] }}
+                  trackColor={{ true: SWITCH_ON_COLOUR[card.phase] }}
                   accessibilityLabel={`${card.phase} phase`}
                 />
               </View>
@@ -65,7 +64,7 @@ export function SetupCards({ setup, onChange }: Props) {
 }
 
 // An enabled switch reads against its own card.
-const TRACK_ON: Record<Phase, string> = { white: '#3A3A3A', black: '#9A9A9A' };
+const SWITCH_ON_COLOUR: Record<Phase, string> = { white: '#3A3A3A', black: '#9A9A9A' };
 
 const styles = StyleSheet.create({
   stack: {
@@ -94,6 +93,6 @@ const styles = StyleSheet.create({
   },
   swapGlyph: {
     fontSize: 24,
-    color: 'rgba(255,255,255,0.9)',
+    color: SETUP_GREY.ink,
   },
 });

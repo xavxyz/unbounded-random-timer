@@ -1,4 +1,5 @@
-import type { Bounds, Phase, SessionSetup } from './sessionClock';
+import type { Bounds, Phase } from './phase';
+import type { SessionSetup } from './sessionClock';
 
 /**
  * The practitioner's setup: both phases in round order, each with its bounds
@@ -7,8 +8,11 @@ import type { Bounds, Phase, SessionSetup } from './sessionClock';
  */
 export type Setup = {
   readonly order: readonly [Phase, Phase];
-  readonly phases: Readonly<Record<Phase, { readonly enabled: boolean; readonly bounds: Bounds }>>;
+  readonly phases: Readonly<Record<Phase, PhaseSetup>>;
 };
+
+/** One phase's part of the setup: whether it's enabled, and its bounds. */
+export type PhaseSetup = { readonly enabled: boolean; readonly bounds: Bounds };
 
 /** What a phase's card shows, in round order. */
 export type Card = { phase: Phase; enabled: boolean; bounds: Bounds; canTurnOff: boolean };
@@ -36,7 +40,11 @@ function isLastEnabled(setup: Setup, phase: Phase): boolean {
 /** Turns a phase on or off. Turning off the last enabled phase is refused: the setup comes back unchanged. */
 export function setPhaseEnabled(setup: Setup, phase: Phase, enabled: boolean): Setup {
   if (!enabled && isLastEnabled(setup, phase)) return setup;
-  return { ...setup, phases: { ...setup.phases, [phase]: { ...setup.phases[phase], enabled } } };
+  return updatePhase(setup, phase, { enabled });
+}
+
+function updatePhase(setup: Setup, phase: Phase, change: Partial<PhaseSetup>): Setup {
+  return { ...setup, phases: { ...setup.phases, [phase]: { ...setup.phases[phase], ...change } } };
 }
 
 /** The enabled phases in round order, as a session takes them. */
@@ -72,8 +80,7 @@ export function setBounds(setup: Setup, phase: Phase, change: Partial<Bounds>): 
     if (change.minSeconds !== undefined) maxSeconds = minSeconds;
     else minSeconds = maxSeconds;
   }
-  const bounds = { minSeconds, maxSeconds };
-  return { ...setup, phases: { ...setup.phases, [phase]: { ...setup.phases[phase], bounds } } };
+  return updatePhase(setup, phase, { bounds: { minSeconds, maxSeconds } });
 }
 
 function snap(seconds: number): number {
@@ -114,7 +121,7 @@ export function restoreSetup(stored: string | null): Setup {
   };
 }
 
-function restorePhase(saved: unknown, fallback: Setup['phases'][Phase]): Setup['phases'][Phase] {
+function restorePhase(saved: unknown, fallback: PhaseSetup): PhaseSetup {
   if (!isRecord(saved)) return fallback;
   return {
     enabled: typeof saved.enabled === 'boolean' ? saved.enabled : fallback.enabled,

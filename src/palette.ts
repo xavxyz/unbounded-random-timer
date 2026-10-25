@@ -1,4 +1,4 @@
-import type { Phase } from './sessionClock';
+import type { Phase } from './phase';
 
 export type Colours = {
   background: string;

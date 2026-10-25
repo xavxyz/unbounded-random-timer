@@ -1,12 +1,9 @@
+import type { Bounds, Phase } from './phase';
+
 export type Random = () => number;
 
 /** Wall-clock milliseconds since the epoch, as returned by `Date.now()`. */
 export type Timestamp = number;
-
-export type Phase = 'white' | 'black';
-
-/** The shortest and longest duration a phase can draw, in whole seconds. */
-export type Bounds = { minSeconds: number; maxSeconds: number };
 
 /** The enabled phases, in round order, each with its bounds. */
 export type SessionSetup = readonly { phase: Phase; bounds: Bounds }[];
