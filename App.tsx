@@ -1,9 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
 import { Unbounded_900Black, useFonts } from '@expo-google-fonts/unbounded';
-import { Pressable, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import { Animated, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { KeepAwake } from './src/KeepAwake';
-import { BACKGROUND, DIM_INK } from './src/palette';
+import { PHASE_COLOURS, SETUP_GREY } from './src/palette';
 import { formatElapsed } from './src/sessionClock';
+import { useColourFade } from './src/useColourFade';
 import { useScreenGesture } from './src/useScreenGesture';
 import { useSession } from './src/useSession';
 
@@ -17,23 +18,30 @@ export default function App() {
   // Until the face loads the round stays hidden, rather than flashing in the system font.
   // Should it fail to load, the round falls back to the system font.
   const [fontLoaded, fontError] = useFonts({ Unbounded_900Black });
+  const colours = snapshot ? PHASE_COLOURS[snapshot.phase] : SETUP_GREY;
+  const { background, ink } = useColourFade(colours);
 
   return (
     // The whole screen is the control: there are no buttons.
     <Pressable style={styles.screen} {...pressHandlers}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: background }]} />
       {snapshot && <KeepAwake />}
       {snapshot && (fontLoaded || fontError) && (
-        <Text
-          style={[styles.round, { fontSize: width * ROUND_FONT_SIZE_PER_WIDTH }]}
+        <Animated.Text
+          style={[styles.round, { color: ink, fontSize: width * ROUND_FONT_SIZE_PER_WIDTH }]}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
           {snapshot.round}
-        </Text>
+        </Animated.Text>
       )}
-      {snapshot && <Text style={styles.elapsed}>{formatElapsed(snapshot.elapsedMs)}</Text>}
-      <Text style={styles.hint}>{snapshot ? 'hold anywhere to stop' : 'tap to begin'}</Text>
-      <StatusBar style="light" />
+      {snapshot && (
+        <Animated.Text style={[styles.elapsed, { color: ink }]}>{formatElapsed(snapshot.elapsedMs)}</Animated.Text>
+      )}
+      <Animated.Text style={[styles.hint, { color: ink }]}>
+        {snapshot ? 'hold anywhere to stop' : 'tap to begin'}
+      </Animated.Text>
+      <StatusBar style={colours.statusBar} />
     </Pressable>
   );
 }
@@ -41,12 +49,10 @@ export default function App() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: BACKGROUND,
     alignItems: 'center',
     justifyContent: 'center',
   },
   round: {
-    color: DIM_INK,
     fontFamily: 'Unbounded_900Black',
     textAlign: 'center',
     paddingHorizontal: 16,
@@ -55,7 +61,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 70,
     alignSelf: 'center',
-    color: DIM_INK,
     fontSize: 13,
     fontWeight: '300',
     fontVariant: ['tabular-nums'],
@@ -65,11 +70,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 60,
     alignSelf: 'center',
-    color: DIM_INK,
     fontSize: 12,
     fontWeight: '300',
     fontVariant: ['small-caps'],
     letterSpacing: 3,
-    opacity: 0.7,
   },
 });

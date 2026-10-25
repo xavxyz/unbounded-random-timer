@@ -3,47 +3,63 @@ export type Random = () => number;
 /** Wall-clock milliseconds since the epoch, as returned by `Date.now()`. */
 export type Timestamp = number;
 
+export type Phase = 'white' | 'black';
+
+/** The shortest and longest duration a phase can draw, in whole seconds. */
+export type Bounds = { minSeconds: number; maxSeconds: number };
+
+/** The enabled phases, in round order, each with its bounds. */
+export type SessionSetup = readonly { phase: Phase; bounds: Bounds }[];
+
 export type SessionSnapshot = {
   round: number;
+  phase: Phase;
   elapsedMs: number;
-  boundaryCrossed: boolean;
+  /**
+   * True only on the first move that reaches a new phase, round 1's first
+   * phase included. Several phases crossed in one move are reported once.
+   */
+  phaseBegan: boolean;
 };
 
 export type Session = {
   /**
-   * Moves the session to `now`. `boundaryCrossed` is true only on the first call
-   * that reaches a new round, so advancing to the same instant again reports
-   * the same round without re-reporting the boundary.
+   * Moves the session to `now`. Moving to the same instant again reports the
+   * same phase without reporting its start again.
    */
   advanceTo(now: Timestamp): SessionSnapshot;
 };
 
-const MIN_ROUND_SECONDS = 180;
-const MAX_ROUND_SECONDS = 420;
-
-function drawRoundMs(random: Random): number {
-  const span = MAX_ROUND_SECONDS - MIN_ROUND_SECONDS + 1;
-  return (MIN_ROUND_SECONDS + Math.floor(random() * span)) * 1000;
+function drawPhaseMs({ minSeconds, maxSeconds }: Bounds, random: Random): number {
+  const span = maxSeconds - minSeconds + 1;
+  return (minSeconds + Math.floor(random() * span)) * 1000;
 }
 
-export function startSession(startedAt: Timestamp, random: Random): Session {
-  // Elapsed time (ms) at which each round reached so far ends; grows lazily.
-  const roundEnds: number[] = [];
-  let lastReportedRound = 1;
+export function startSession(setup: SessionSetup, startedAt: Timestamp, random: Random): Session {
+  // Elapsed time (ms) at which each phase reached so far ends, counted across
+  // rounds (phase n of the session is setup[n % setup.length]); grows lazily.
+  const phaseEnds: number[] = [];
+  let lastReported = -1;
 
   return {
     advanceTo(now) {
       const elapsedMs = Math.max(0, now - startedAt);
-      let round = 1;
-      for (;; round++) {
-        if (roundEnds.length < round) {
-          roundEnds.push((roundEnds[round - 2] ?? 0) + drawRoundMs(random));
+      let index = 0;
+      for (;; index++) {
+        if (phaseEnds.length <= index) {
+          const { bounds } = setup[index % setup.length];
+          phaseEnds.push((phaseEnds[index - 1] ?? 0) + drawPhaseMs(bounds, random));
         }
-        if (elapsedMs < roundEnds[round - 1]) break;
+        if (elapsedMs < phaseEnds[index]) break;
       }
-      const boundaryCrossed = round > lastReportedRound;
-      lastReportedRound = Math.max(lastReportedRound, round);
-      return { round, elapsedMs, boundaryCrossed };
+      const phaseBegan = index > lastReported;
+      lastReported = Math.max(lastReported, index);
+      return {
+        round: Math.floor(index / setup.length) + 1,
+        phase: setup[index % setup.length].phase,
+        elapsedMs,
+        phaseBegan,
+      };
     },
   };
 }

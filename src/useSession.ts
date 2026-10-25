@@ -2,33 +2,48 @@ import { useCallback, useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { AppState } from 'react-native';
 import { keepsSessionRunning } from './appLifecycle';
-import { startSession, type Session, type SessionSnapshot } from './sessionClock';
+import { startSession, type Session, type SessionSetup, type SessionSnapshot } from './sessionClock';
 import { useBell } from './useBell';
 
 const POLL_MS = 250;
 
+// Hard-coded until the setup screen exists.
+const DEFAULT_SETUP: SessionSetup = [
+  { phase: 'white', bounds: { minSeconds: 180, maxSeconds: 420 } },
+  { phase: 'black', bounds: { minSeconds: 20, maxSeconds: 40 } },
+];
+
 /**
  * Runs a session against the wall clock, ringing the bell with a light haptic
- * on start and at every round boundary. `snapshot` is null while idle.
+ * at every phase start, round 1's first phase included. `snapshot` is null
+ * while idle.
  */
 export function useSession() {
   const ringBell = useBell();
   const [session, setSession] = useState<Session | null>(null);
   const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
 
-  // Marks the start of every round, round 1 included.
-  const signalRound = useCallback(() => {
+  const signalPhase = useCallback(() => {
     ringBell();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [ringBell]);
 
+  // One signal per report, even when several phase starts were crossed at once.
+  const moveTo = useCallback(
+    (current: Session, now: number) => {
+      const next = current.advanceTo(now);
+      if (next.phaseBegan) signalPhase();
+      setSnapshot(next);
+    },
+    [signalPhase],
+  );
+
   const start = useCallback(() => {
     const now = Date.now();
-    const next = startSession(now, Math.random);
+    const next = startSession(DEFAULT_SETUP, now, Math.random);
     setSession(next);
-    setSnapshot(next.advanceTo(now));
-    signalRound();
-  }, [signalRound]);
+    moveTo(next, now);
+  }, [moveTo]);
 
   const stop = useCallback(() => {
     setSession(null);
@@ -37,17 +52,12 @@ export function useSession() {
 
   useEffect(() => {
     if (!session) return;
-    const poll = setInterval(() => {
-      const next = session.advanceTo(Date.now());
-      // One signal per report, even when several boundaries were crossed at once.
-      if (next.boundaryCrossed) signalRound();
-      setSnapshot(next);
-    }, POLL_MS);
+    const poll = setInterval(() => moveTo(session, Date.now()), POLL_MS);
     return () => clearInterval(poll);
-  }, [session, signalRound]);
+  }, [session, moveTo]);
 
   // Leaving the foreground stops the session silently rather than letting it
-  // time without being able to ring.
+  // run without being able to ring.
   useEffect(() => {
     if (!session) return;
     if (!keepsSessionRunning(AppState.currentState)) {
