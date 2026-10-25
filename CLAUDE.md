@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Unbounded Random 3–7 Minute Timer
+# Unbounded Random Timer
 
 ## Agent skills
 
