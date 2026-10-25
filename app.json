@@ -33,7 +33,8 @@
       ],
       "expo-font",
       "expo-status-bar",
-      "expo-asset"
+      "expo-asset",
+      "expo-sqlite"
     ],
     "extra": {
       "eas": {
