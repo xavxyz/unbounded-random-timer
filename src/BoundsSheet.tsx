@@ -2,7 +2,7 @@ import { BottomSheet, Column, Picker, Row, Text } from '@expo/ui';
 import type { Bounds } from './phase';
 import { BOUNDS_STEP_SECONDS, LONGEST_BOUND_SECONDS, SHORTEST_BOUND_SECONDS, formatDuration } from './setup';
 
-// Every duration a bound can take: 0:05, 0:10, … 59:55.
+// Every duration a bound can take: 0:05, 0:10, … 15:00.
 const DURATIONS = Array.from(
   { length: (LONGEST_BOUND_SECONDS - SHORTEST_BOUND_SECONDS) / BOUNDS_STEP_SECONDS + 1 },
   (_, index) => SHORTEST_BOUND_SECONDS + index * BOUNDS_STEP_SECONDS,

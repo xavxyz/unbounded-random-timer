@@ -64,12 +64,12 @@ export function swapOrder(setup: Setup): Setup {
 export const BOUNDS_STEP_SECONDS = 5;
 /** The shortest a bound can be: 0:05. */
 export const SHORTEST_BOUND_SECONDS = 5;
-/** The longest a bound can be: 59:55. */
-export const LONGEST_BOUND_SECONDS = 3595;
+/** The longest a bound can be: 15:00. */
+export const LONGEST_BOUND_SECONDS = 900;
 
 /**
  * Sets one or both of a phase's bounds, snapping each to the nearest 5 seconds
- * within 0:05–59:55. The shortest never ends up above the longest: the bound
+ * within 0:05–15:00. The shortest never ends up above the longest: the bound
  * being set wins and pushes the other along (the shortest, if both are given).
  */
 export function setBounds(setup: Setup, phase: Phase, change: Partial<Bounds>): Setup {

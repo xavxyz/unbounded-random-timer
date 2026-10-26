@@ -78,18 +78,18 @@ describe('setting bounds', () => {
     });
   });
 
-  it('keeps each bound between 0:05 and 59:55', () => {
+  it('keeps each bound between 0:05 and 15:00', () => {
     expect(blackBounds(setBounds(DEFAULT_SETUP, 'black', { minSeconds: 0, maxSeconds: 3600 }))).toEqual({
       minSeconds: 5,
-      maxSeconds: 3595,
+      maxSeconds: 900,
     });
     expect(blackBounds(setBounds(DEFAULT_SETUP, 'black', { minSeconds: -40, maxSeconds: 2 }))).toEqual({
       minSeconds: 5,
       maxSeconds: 5,
     });
     expect(blackBounds(setBounds(DEFAULT_SETUP, 'black', { minSeconds: 7200, maxSeconds: 9000 }))).toEqual({
-      minSeconds: 3595,
-      maxSeconds: 3595,
+      minSeconds: 900,
+      maxSeconds: 900,
     });
   });
 
@@ -125,7 +125,7 @@ describe('bounds label', () => {
   it('shows the shortest and longest durations as m:ss–m:ss', () => {
     expect(formatBounds({ minSeconds: 180, maxSeconds: 420 })).toBe('3:00–7:00');
     expect(formatBounds({ minSeconds: 20, maxSeconds: 40 })).toBe('0:20–0:40');
-    expect(formatBounds({ minSeconds: 5, maxSeconds: 3595 })).toBe('0:05–59:55');
+    expect(formatBounds({ minSeconds: 5, maxSeconds: 900 })).toBe('0:05–15:00');
   });
 });
 
@@ -139,7 +139,7 @@ describe('restoring a saved setup', () => {
       order: ['black', 'white'],
       phases: {
         white: { enabled: false, bounds: { minSeconds: 60, maxSeconds: 95 } },
-        black: { enabled: true, bounds: { minSeconds: 5, maxSeconds: 3595 } },
+        black: { enabled: true, bounds: { minSeconds: 5, maxSeconds: 900 } },
       },
     };
     expect(restoreSetup(JSON.stringify(saved))).toEqual(saved);
@@ -201,7 +201,7 @@ describe('restoring a saved setup', () => {
   it.each([
     ['not a number', '"1:00"'],
     ['shorter than 0:05', 0],
-    ['longer than 59:55', 3600],
+    ['longer than 15:00', 905],
     ['off the 5 s steps', 62],
     ['not whole seconds', 60.5],
   ])('keeps a saved longest when the saved shortest is %s, taking the default shortest', (_, minSeconds) => {
@@ -211,7 +211,7 @@ describe('restoring a saved setup', () => {
   it.each([
     ['not a number', '"2:00"'],
     ['shorter than 0:05', 0],
-    ['longer than 59:55', 3600],
+    ['longer than 15:00', 905],
     ['off the 5 s steps', 122],
     ['not whole seconds', 120.5],
   ])('keeps a saved shortest when the saved longest is %s, taking the default longest', (_, maxSeconds) => {
