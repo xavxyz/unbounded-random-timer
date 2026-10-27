@@ -32,3 +32,9 @@ _Avoid_: Range, limits
 **Hold to stop**:
 Holding anywhere on the screen until the session stops. As the hold goes on, the round number fades into the background colour; a haptic fires as the stop lands.
 _Avoid_: Press to stop, reset
+
+### The setup screen
+
+**Emblem**:
+The turning mechanism above the setup cards: a ring of gears driven by a taiji at its heart, under the words "One part moves, all parts move". Every part turns together in one even, silent sweep; the taiji's two halves are White and Black.
+_Avoid_: Movement, logo, wallpaper
