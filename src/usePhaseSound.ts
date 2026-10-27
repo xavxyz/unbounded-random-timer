@@ -8,9 +8,9 @@ import type { Phase } from './phase';
 const WHITE_SOUND = require('../assets/bell.wav');
 const BLACK_SOUND = require('../assets/black.wav');
 
-// Set once at load, before any ring: sound through the iOS silent switch, and
-// mix with music rather than lowering or pausing it.
-setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'mixWithOthers' });
+// Set once at load, before any ring: sound through the iOS silent switch, keep
+// playing while locked, and own the lock screen, which pauses other audio (docs/adr/0002).
+setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'doNotMix', shouldPlayInBackground: true });
 
 /** Returns a function that plays a phase's own sound from the top. */
 export function usePhaseSound() {

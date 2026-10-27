@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { AppState } from 'react-native';
-import { keepsSessionRunning } from './appLifecycle';
 import type { Phase } from './phase';
 import { startSession, type Session, type SessionSetup, type SessionSnapshot } from './sessionClock';
+import { useKeepAlive } from './useKeepAlive';
 import { usePhaseSound } from './usePhaseSound';
 
 const POLL_MS = 250;
@@ -55,19 +54,8 @@ export function useSession(setup: SessionSetup) {
     return () => clearInterval(poll);
   }, [session, moveTo]);
 
-  // Leaving the foreground stops the session silently rather than letting it
-  // run without being able to ring.
-  useEffect(() => {
-    if (!session) return;
-    if (!keepsSessionRunning(AppState.currentState)) {
-      stop();
-      return;
-    }
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (!keepsSessionRunning(state)) stop();
-    });
-    return () => subscription.remove();
-  }, [session, stop]);
+  // SPIKE: the session runs on through a lock or leaving the app; only the hold stops it.
+  useKeepAlive(snapshot?.round ?? null);
 
   return { snapshot, start, stop };
 }
