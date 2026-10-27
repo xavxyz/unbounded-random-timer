@@ -4,15 +4,15 @@ import { COLOUR_FADE_MS } from './palette';
 
 /**
  * An opacity that fades in over `COLOUR_FADE_MS` when `shown` turns true,
- * alongside the screen's colour fade, and out over `outMs` when it turns false. `mounted` stays
- * true until the fade out ends, so what fades can stay on screen until then.
+ * alongside the screen's colour fade, and out over `outMs` when it turns false.
+ * `visible` stays true until the fade out ends.
  * A change mid-fade turns the fade round from where it is.
  */
 export function useFade(shown: boolean, outMs = COLOUR_FADE_MS) {
   const opacity = useRef(new Animated.Value(0)).current;
-  const [mounted, setMounted] = useState(shown);
+  const [visible, setVisible] = useState(shown);
 
-  if (shown && !mounted) setMounted(true);
+  if (shown && !visible) setVisible(true);
 
   useEffect(() => {
     const animation = Animated.timing(opacity, {
@@ -23,10 +23,10 @@ export function useFade(shown: boolean, outMs = COLOUR_FADE_MS) {
       useNativeDriver: false,
     });
     animation.start(({ finished }) => {
-      if (finished && !shown) setMounted(false);
+      if (finished && !shown) setVisible(false);
     });
     return () => animation.stop();
   }, [shown, outMs, opacity]);
 
-  return { opacity, mounted };
+  return { opacity, visible };
 }

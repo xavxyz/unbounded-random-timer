@@ -40,6 +40,13 @@ export default function App() {
   // The setup screen fades in and out with the background, so nothing sits at full contrast on a fading White or Black.
   const showingSetup = !snapshot && setup != null;
   const setupFade = useFade(showingSetup, SETUP_FADE_OUT_MS);
+  // Hidden during a session rather than unmounted: drawing the Emblem afresh on stop
+  // would hold up the JS thread, and with it the fade back.
+  const setupHidden = {
+    pointerEvents: showingSetup ? ('auto' as const) : ('none' as const),
+    accessibilityElementsHidden: !showingSetup,
+    importantForAccessibility: showingSetup ? ('auto' as const) : ('no-hide-descendants' as const),
+  };
 
   return (
     // The whole screen is the control: tapping it begins, holding stops.
@@ -47,13 +54,10 @@ export default function App() {
     <Pressable style={styles.screen} {...pressHandlers}>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: background }]} />
       {snapshot && <KeepAwake />}
-      {setupFade.mounted && setup && (
-        // Fading out over a session, it lets touches through to hold to stop.
-        <Animated.View
-          style={[styles.setup, { opacity: setupFade.opacity }]}
-          pointerEvents={showingSetup ? 'auto' : 'none'}
-        >
-          <Emblem />
+      {setup && (
+        // Hidden, it lets touches through to hold to stop.
+        <Animated.View style={[styles.setup, { opacity: setupFade.opacity }]} {...setupHidden}>
+          <Emblem turning={setupFade.visible} />
           <SetupCards setup={setup} onChange={setSetup} />
         </Animated.View>
       )}
@@ -72,8 +76,10 @@ export default function App() {
       {snapshot && (
         <Animated.Text style={[styles.elapsed, { color: ink }]}>{formatElapsed(snapshot.elapsedMs)}</Animated.Text>
       )}
-      {setupFade.mounted && (
-        <Animated.Text style={[styles.hint, { color: ink, opacity: setupFade.opacity }]}>tap to begin</Animated.Text>
+      {setup && (
+        <Animated.Text style={[styles.hint, { color: ink, opacity: setupFade.opacity }]} {...setupHidden}>
+          tap to begin
+        </Animated.Text>
       )}
       {snapshot && <Animated.Text style={[styles.hint, { color: ink }]}>hold anywhere to stop</Animated.Text>}
       <StatusBar style={colours.statusBar} />

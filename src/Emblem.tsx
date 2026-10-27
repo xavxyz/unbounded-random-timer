@@ -56,10 +56,10 @@ const TRAIN = wallpaperTrain();
 /**
  * The turning mechanism above the setup cards: the wallpaper's own case over
  * drawn gears. The taiji turns clockwise in one even sweep and every gear
- * follows at its tooth ratio. It holds still under Reduce Motion, and lets
- * touches through to the screen.
+ * follows at its tooth ratio. It holds still under Reduce Motion or while not
+ * `turning`, and lets touches through to the screen.
  */
-export function Emblem() {
+export function Emblem({ turning }: { turning: boolean }) {
   const { width } = useWindowDimensions();
   const size = width * WIDTH_SHARE;
   const scale = size / VIEW;
@@ -77,7 +77,7 @@ export function Emblem() {
   // gear has come round whole, so starting over doesn't show. Until the Reduce
   // Motion setting is known, the Emblem holds still.
   useEffect(() => {
-    if (reduceMotion !== false) return;
+    if (reduceMotion !== false || !turning) return;
     let animation: Animated.CompositeAnimation | null = null;
     let cancelled = false;
     settled.current.then(() => {
@@ -106,9 +106,9 @@ export function Emblem() {
         }),
       );
     };
-  }, [reduceMotion, rested, swept]);
+  }, [reduceMotion, turning, rested, swept]);
 
-  const turning = (gear: Gear) => ({
+  const rotation = (gear: Gear) => ({
     rotate: turns.interpolate({
       inputRange: [0, 1],
       outputRange: ['0deg', `${gear.ratio * 360}deg`],
@@ -124,7 +124,7 @@ export function Emblem() {
       top: (gear.y - r + VIEW / 2) * scale,
       width: 2 * r * scale,
       height: 2 * r * scale,
-      transform: [turning(gear)],
+      transform: [rotation(gear)],
     };
   };
 
