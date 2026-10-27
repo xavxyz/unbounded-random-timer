@@ -1,0 +1,428 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway. Not part of the app.
+  Question: what should the White and Black phase sounds sound like?
+  Four sound proposals from docs/research/gong-bell-sound-design.md, switchable
+  via ?variant=A..D and the floating bar (or ← / →). Each is synthesised live
+  with the same modal model as scripts/synthesize-bell.mjs, so a winner's
+  parameters can be copied straight into that script.
+  Run: npm run prototype:bells   (or double-click this file)
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE · bell sounds</title>
+<style>
+  :root { color-scheme: dark; --fg: #eee; --dim: #888; --line: #333; --white: #f3efe6; --black: #8fa3c4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #111; color: var(--fg); font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; padding: 24px 24px 120px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 0 0 8px; letter-spacing: .04em; text-transform: uppercase; }
+  .why { color: var(--dim); max-width: 880px; margin: 0 0 20px; }
+  .why li { margin: 2px 0; }
+  .phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px; }
+  .phase { border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .phase.white h2 { color: var(--white); } .phase.black h2 { color: var(--black); }
+  .play { font-size: 16px; padding: 10px 18px; border-radius: 8px; border: 0; cursor: pointer; margin-right: 8px; }
+  .phase.white .play { background: var(--white); color: #111; } .phase.black .play { background: var(--black); color: #111; }
+  button.small { background: #222; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+  label.slider { display: grid; grid-template-columns: 120px 1fr 80px; align-items: center; gap: 8px; margin: 4px 0; color: var(--dim); }
+  label.slider output { color: var(--fg); text-align: right; font-variant-numeric: tabular-nums; }
+  canvas { width: 100%; height: 140px; background: #0a0a0a; border-radius: 6px; margin: 10px 0 4px; display: block; }
+  canvas.spec { height: 80px; }
+  .metrics { font: 12px ui-monospace, monospace; color: var(--dim); white-space: pre-wrap; }
+  .metrics b { color: var(--fg); font-weight: normal; }
+  table { border-collapse: collapse; font: 12px ui-monospace, monospace; margin-top: 8px; }
+  td, th { padding: 1px 8px 1px 0; text-align: right; color: var(--dim); } th { font-weight: normal; color: #666; }
+  .session { margin-top: 24px; border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .session input[type=number] { width: 60px; background: #222; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px; }
+  #log { font: 12px ui-monospace, monospace; color: var(--dim); max-height: 140px; overflow: auto; margin-top: 8px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  #switcher { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px;
+    background: #ff0; color: #000; border-radius: 999px; padding: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.6); font-weight: 600; z-index: 10; }
+  #switcher button { background: #000; color: #ff0; border: 0; border-radius: 999px; width: 34px; height: 34px; font-size: 16px; cursor: pointer; }
+  #switcher span { padding: 0 14px; min-width: 240px; text-align: center; }
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<ul class="why" id="why"></ul>
+<div class="phases" id="phases"></div>
+
+<div class="session">
+  <h2>Session</h2>
+  <div class="row">
+    <button class="small" id="sessionBtn">Start session</button>
+    <span>random gap between <input type="number" id="minS" value="5" min="1"> and <input type="number" id="maxS" value="20" min="1"> s, alternating White / Black</span>
+    <label><input type="checkbox" id="phoneSpeaker"> rough phone speaker (high-pass 500 Hz, low-pass 8 kHz; an approximation, not measured)</label>
+  </div>
+  <div id="log"></div>
+</div>
+
+<div id="switcher"><button id="prev" title="Previous (←)">←</button><span id="label"></span><button id="next" title="Next (→)">→</button></div>
+
+<script>
+// ---------- Proposals ----------
+// partial: [frequency ratio, detune in Hz, amplitude, decay time constant in s]
+// strikes: [delay in s, gain]
+const VARIANTS = {
+  A: {
+    name: 'Current assets',
+    why: [
+      'Baseline: the exact parameters of scripts/synthesize-bell.mjs as shipped.',
+      'Rings 1.2 s / 1.6 s, cut while still audible (Black about 17 dB below its strike).',
+      'No beating; ratios mix bowl/bar modes (2.76, 5.4) with Risset-bell ones (2.01, 4.07). White at 1175 Hz is above Patterson\'s 150–1000 Hz; its echo at 160 ms is near his "urgent" spacing.',
+    ],
+    white: {
+      f0: 1175, tauScale: 1, durationS: 1.2, softness: 0, beat: 1,
+      partials: [[1, 0, 1, 0.35], [2.01, 0, 0.55, 0.22], [2.76, 0, 0.4, 0.16], [4.07, 0, 0.25, 0.1], [5.4, 0, 0.15, 0.06]],
+      strikes: [[0, 1], [0.16, 0.25]],
+    },
+    black: {
+      f0: 587, tauScale: 1.4, durationS: 1.6, softness: 0, beat: 1,
+      partials: [[1, 0, 1, 0.35], [2.01, 0, 0.55, 0.22], [2.76, 0, 0.4, 0.16], [4.07, 0, 0.25, 0.1], [5.4, 0, 0.15, 0.06]],
+      strikes: [[0, 1], [0.32, 0.85], [0.48, 0.2]],
+    },
+  },
+  B: {
+    name: 'Rin bowl',
+    why: [
+      'One coherent singing-bowl model: ratios 1 : 2.78 : 5.18 : 8.16 : 11.66 (Csound modal table, 180 mm Tibetan bowl).',
+      'Beating: fundamental split by 1.4 Hz and the second mode by 2.2 Hz (measured bowls: 1.4–1.6 Hz, Imbery et al. 2014).',
+      'Rings about 4 s (fundamental τ 0.55 s, T60 ≈ 3.8 s). White at 740 Hz with partials at 2.1 and 3.8 kHz; Black is the same bowl at 440 Hz, struck twice 500 ms apart (Patterson: over 300 ms reads non-urgent).',
+      'Softer mallet: high partials start quieter instead of a slower attack.',
+    ],
+    white: {
+      f0: 740, tauScale: 1, durationS: 4, softness: 0.4, beat: 1,
+      partials: [[1, 0, 1, 0.55], [1, 1.4, 0.8, 0.55], [2.78, 0, 0.6, 0.32], [2.78, 2.2, 0.5, 0.3], [5.18, 0, 0.3, 0.16], [8.16, 0, 0.15, 0.09], [11.66, 0, 0.08, 0.06]],
+      strikes: [[0, 1]],
+    },
+    black: {
+      f0: 440, tauScale: 1.1, durationS: 4.5, softness: 0.4, beat: 1,
+      partials: [[1, 0, 1, 0.55], [1, 1.4, 0.8, 0.55], [2.78, 0, 0.6, 0.32], [2.78, 2.2, 0.5, 0.3], [5.18, 0, 0.3, 0.16], [8.16, 0, 0.15, 0.09], [11.66, 0, 0.08, 0.06]],
+      strikes: [[0, 1], [0.5, 0.8]],
+    },
+  },
+  C: {
+    name: 'Temple bell',
+    why: [
+      'Church-bell partials: hum 0.5, prime 1, tierce 1.2, quint 1.5, nominal 2 (Physics Today, Liberty Bell).',
+      'Hum, prime and tierce are quiet but long; quint and nominal loud but short (CCCBR belltower notes). Hum, prime and nominal beat by 0.8–2.5 Hz.',
+      'Minor-third tierce gives a darker, more solemn colour than the bowl. White prime 700 Hz (nominal 1.4 kHz); Black prime 440 Hz, struck twice 450 ms apart.',
+      'Watch the hum: at 220–350 Hz it will mostly vanish on a phone speaker (try the phone toggle below).',
+    ],
+    white: {
+      f0: 700, tauScale: 1, durationS: 4.5, softness: 0.2, beat: 1,
+      partials: [[0.5, 0, 0.45, 0.9], [0.5, 0.8, 0.35, 0.9], [1, 0, 0.6, 0.6], [1, 1.2, 0.45, 0.6], [1.2, 0, 0.6, 0.45], [1.5, 0, 0.5, 0.25], [2, 0, 1, 0.2], [2, 2.5, 0.5, 0.2]],
+      strikes: [[0, 1]],
+    },
+    black: {
+      f0: 440, tauScale: 1.1, durationS: 4.5, softness: 0.2, beat: 1,
+      partials: [[0.5, 0, 0.45, 0.9], [0.5, 0.8, 0.35, 0.9], [1, 0, 0.6, 0.6], [1, 1.2, 0.45, 0.6], [1.2, 0, 0.6, 0.45], [1.5, 0, 0.5, 0.25], [2, 0, 1, 0.2], [2, 2.5, 0.5, 0.2]],
+      strikes: [[0, 1], [0.45, 0.85]],
+    },
+  },
+  D: {
+    name: 'Risset bell',
+    why: [
+      'Risset & Mathews\' classic 11-partial additive bell, parameters from the Pure Data D07 example (pairs detuned +1 Hz and +1.7 Hz).',
+      'Each partial\'s decay is its relative duration × 4 s, reaching −60 dB at its end.',
+      'Glassier, more "electronic" than B or C; a known-good synthetic reference. White base 1000 Hz (lowest partial 560 Hz); Black base 600 Hz, struck twice 500 ms apart.',
+    ],
+    white: { f0: 1000, tauScale: 1, durationS: 4, softness: 0, beat: 1, partials: risset(4), strikes: [[0, 1]] },
+    black: { f0: 600, tauScale: 1.1, durationS: 4.5, softness: 0, beat: 1, partials: risset(4), strikes: [[0, 1], [0.5, 0.8]] },
+  },
+};
+
+function risset(T) {
+  // [relative freq, detune Hz, amplitude, relative duration]
+  const table = [
+    [0.56, 0, 1, 1], [0.56, 1, 0.67, 0.9], [0.92, 0, 1, 0.65], [0.92, 1.7, 1.8, 0.55], [1.19, 0, 2.67, 0.325],
+    [1.7, 0, 1.67, 0.35], [2, 0, 1.46, 0.25], [2.74, 0, 1.33, 0.2], [3, 0, 1.33, 0.15], [3.76, 0, 1, 0.1], [4.07, 0, 1.33, 0.075],
+  ];
+  return table.map(([r, d, a, dur]) => [r, d, a, (dur * T) / Math.log(1000)]);
+}
+
+// ---------- Synthesis (same model as scripts/synthesize-bell.mjs) ----------
+const SR = 48000;
+const ATTACK_S = 0.002;
+const FADE_OUT_S = 0.05;
+const TARGET_LUFS = -16; // max momentary loudness, the same for every sound
+const PEAK_CEILING_DB = -1;
+
+function synthesize(p) {
+  const n = Math.floor(SR * p.durationS);
+  const out = new Float32Array(n);
+  // softer mallet: higher partials start quieter, amplitude × ratio^-softness
+  const parts = p.partials.map(([r, d, a, tau]) => [2 * Math.PI * (p.f0 * r + d * p.beat), a * Math.pow(r, -p.softness), tau * p.tauScale]);
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    let v = 0;
+    for (const [delay, gain] of p.strikes) {
+      const ts = t - delay;
+      if (ts < 0) continue;
+      let s = 0;
+      for (const [w, a, tau] of parts) s += a * Math.exp(-ts / tau) * Math.sin(w * ts);
+      v += gain * s * Math.min(1, ts / ATTACK_S);
+    }
+    out[i] = v * Math.min(1, (p.durationS - t) / FADE_OUT_S);
+  }
+  return out;
+}
+
+// ITU-R BS.1770 K-weighting at 48 kHz, 400 ms momentary windows every 100 ms.
+function biquad(x, b, a) {
+  const y = new Float32Array(x.length);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < x.length; i++) {
+    const v = b[0] * x[i] + b[1] * x1 + b[2] * x2 - a[1] * y1 - a[2] * y2;
+    x2 = x1; x1 = x[i]; y2 = y1; y1 = v; y[i] = v;
+  }
+  return y;
+}
+function maxMomentaryLufs(x) {
+  const k = biquad(biquad(x, [1.53512485958697, -2.69169618940638, 1.19839281085285], [1, -1.69065929318241, 0.73248077421585]),
+    [1, -2, 1], [1, -1.99004745483398, 0.99007225036621]);
+  const win = 0.4 * SR, hop = 0.1 * SR;
+  let best = -Infinity;
+  for (let s = 0; s + win <= k.length; s += hop) {
+    let sum = 0;
+    for (let i = s; i < s + win; i++) sum += k[i] * k[i];
+    best = Math.max(best, -0.691 + 10 * Math.log10(sum / win));
+  }
+  return best;
+}
+const db = (v) => 20 * Math.log10(Math.max(v, 1e-9));
+const peakOf = (x) => x.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+
+function render(p) {
+  const raw = synthesize(p);
+  const rawPeak = peakOf(raw);
+  // tail level: peak of the last 50 ms before the fade, relative to the overall peak
+  const tailStart = Math.floor((p.durationS - FADE_OUT_S - 0.05) * SR), tailEnd = Math.floor((p.durationS - FADE_OUT_S) * SR);
+  const tailDb = db(peakOf(raw.subarray(Math.max(0, tailStart), tailEnd)) / rawPeak);
+  let gain = Math.pow(10, (TARGET_LUFS - maxMomentaryLufs(raw)) / 20);
+  const limited = db(rawPeak * gain) > PEAK_CEILING_DB;
+  if (limited) gain = Math.pow(10, PEAK_CEILING_DB / 20) / rawPeak;
+  const x = raw.map((v) => v * gain);
+  return { x, lufs: maxMomentaryLufs(x), peakDb: db(peakOf(x)), tailDb, limited };
+}
+
+// ---------- Audio ----------
+let ctx;
+const playing = {};
+function audio() {
+  ctx ??= new AudioContext({ sampleRate: SR });
+  return ctx;
+}
+function play(phase) {
+  const c = audio();
+  const { x } = state[phase].rendered;
+  const buf = c.createBuffer(1, x.length, SR);
+  buf.copyToChannel(x, 0);
+  playing[phase]?.stop(); // like ringFromTop: the same player restarts
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  let node = src;
+  if (document.getElementById('phoneSpeaker').checked) {
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 500; hp.Q.value = 0.7;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 8000;
+    node.connect(hp); hp.connect(lp); node = lp;
+  }
+  node.connect(c.destination);
+  src.start();
+  playing[phase] = src;
+}
+
+// ---------- UI ----------
+const SLIDERS = [
+  ['f0', 'pitch', 150, 1500, 1, (v) => `${v} Hz`],
+  ['tauScale', 'ring length ×', 0.3, 3, 0.05, (v) => v.toFixed(2)],
+  ['durationS', 'file length', 0.5, 6, 0.1, (v) => `${v.toFixed(1)} s`],
+  ['beat', 'beating ×', 0, 4, 0.1, (v) => v.toFixed(1)],
+  ['softness', 'mallet softness', 0, 1.5, 0.05, (v) => v.toFixed(2)],
+  ['gap', 'strike gap ×', 0.25, 3, 0.05, (v) => v.toFixed(2)],
+];
+const keys = Object.keys(VARIANTS);
+let current;
+let state;
+
+function load(key) {
+  current = VARIANTS[key] ? key : 'A';
+  const v = VARIANTS[current];
+  state = {};
+  for (const phase of ['white', 'black']) {
+    const base = structuredClone(v[phase]);
+    state[phase] = { base, p: { ...base, gap: 1 } };
+  }
+  document.getElementById('title').textContent = `${current} · ${v.name}`;
+  document.getElementById('why').innerHTML = v.why.map((w) => `<li>${w}</li>`).join('');
+  document.getElementById('label').textContent = `${current} (${v.name}) ${keys.indexOf(current) + 1}/${keys.length}`;
+  const host = document.getElementById('phases');
+  host.innerHTML = '';
+  for (const phase of ['white', 'black']) host.append(phasePanel(phase));
+  for (const phase of ['white', 'black']) update(phase);
+}
+
+function phasePanel(phase) {
+  const el = document.createElement('div');
+  el.className = `phase ${phase}`;
+  el.innerHTML = `<h2>${phase}</h2>
+    <div class="row"><button class="play">▶ Ring ${phase}</button>
+    <button class="small" data-act="wav">Download .wav</button>
+    <button class="small" data-act="json">Copy params</button>
+    <button class="small" data-act="reset">Reset</button></div>
+    <div class="sliders"></div>
+    <canvas class="env"></canvas><canvas class="spec"></canvas>
+    <div class="metrics"></div><table></table>`;
+  el.querySelector('.play').onclick = () => play(phase);
+  el.querySelector('[data-act=wav]').onclick = () => download(phase);
+  el.querySelector('[data-act=json]').onclick = () => navigator.clipboard.writeText(JSON.stringify(effective(phase), null, 2));
+  el.querySelector('[data-act=reset]').onclick = () => load(current);
+  const sl = el.querySelector('.sliders');
+  for (const [key, label, min, max, step, fmt] of SLIDERS) {
+    if (key === 'gap' && state[phase].base.strikes.length < 2) continue;
+    const row = document.createElement('label');
+    row.className = 'slider';
+    row.innerHTML = `<span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}" value="${state[phase].p[key]}"><output></output>`;
+    const input = row.querySelector('input'), out = row.querySelector('output');
+    out.textContent = fmt(+input.value);
+    input.oninput = () => { state[phase].p[key] = +input.value; out.textContent = fmt(+input.value); update(phase); };
+    input.onchange = () => play(phase);
+    sl.append(row);
+  }
+  state[phase].el = el;
+  return el;
+}
+
+// The parameters as synthesised: strike delays scaled by the gap slider.
+function effective(phase) {
+  const { gap, ...p } = state[phase].p;
+  return { ...p, strikes: state[phase].base.strikes.map(([d, g]) => [+(d * gap).toFixed(3), g]) };
+}
+
+function update(phase) {
+  const p = effective(phase);
+  const r = render(p);
+  state[phase].rendered = r;
+  const el = state[phase].el;
+  drawEnvelope(el.querySelector('.env'), r.x, p.durationS, phase);
+  drawSpectrum(el.querySelector('.spec'), p, phase);
+  const gaps = p.strikes.slice(1).map(([d], i) => Math.round((d - p.strikes[i][0]) * 1000));
+  const fundTau = Math.max(...p.partials.map(([, , , tau]) => tau)) * p.tauScale;
+  el.querySelector('.metrics').innerHTML =
+    `length <b>${p.durationS.toFixed(1)} s</b> · longest partial T60 <b>${(fundTau * Math.log(1000)).toFixed(1)} s</b> · tail before fade <b>${r.tailDb.toFixed(0)} dB</b> (aim −50 to −60)\n` +
+    `loudness <b>${r.lufs.toFixed(1)} LUFS</b> max momentary · peak <b>${r.peakDb.toFixed(1)} dBFS</b>${r.limited ? ' (peak-limited, quieter than target)' : ''}\n` +
+    `strike gaps <b>${gaps.length ? gaps.join(', ') + ' ms' : 'single strike'}</b> (Patterson: <150 urgent, >300 calm)`;
+  el.querySelector('table').innerHTML = '<tr><th>ratio</th><th>Hz</th><th>beat Hz</th><th>amp</th><th>τ s</th><th>T60 s</th></tr>' +
+    p.partials.map(([rt, d, a, tau]) => `<tr><td>${rt}</td><td>${(p.f0 * rt).toFixed(0)}</td><td>${d ? (d * p.beat).toFixed(1) : ''}</td><td>${(a * Math.pow(rt, -p.softness)).toFixed(2)}</td><td>${(tau * p.tauScale).toFixed(2)}</td><td>${(tau * p.tauScale * Math.log(1000)).toFixed(1)}</td></tr>`).join('');
+}
+
+function sizeCanvas(cv) {
+  const w = cv.clientWidth * devicePixelRatio, h = cv.clientHeight * devicePixelRatio;
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d');
+  g.scale(devicePixelRatio, devicePixelRatio);
+  return [g, cv.clientWidth, cv.clientHeight];
+}
+
+// Envelope in dB over a fixed 6 s axis, with the app's 5 s shortest bound marked.
+function drawEnvelope(cv, x, durationS, phase) {
+  const [g, w, h] = sizeCanvas(cv);
+  const T = 6, floor = -70, block = Math.floor(SR * 0.01);
+  const peak = peakOf(x);
+  const yOf = (d) => (d / floor) * h;
+  g.fillStyle = '#666'; g.font = '10px ui-monospace, monospace';
+  for (const d of [-20, -40, -60]) { g.fillStyle = '#222'; g.fillRect(0, yOf(d), w, 1); g.fillStyle = '#555'; g.fillText(`${d} dB`, 4, yOf(d) - 2); }
+  for (let s = 1; s < T; s++) { g.fillStyle = s === 5 ? '#a33' : '#1c1c1c'; g.fillRect((s / T) * w, 0, 1, h); }
+  g.fillStyle = '#a33'; g.fillText('5 s: shortest bound', (5 / T) * w + 4, h - 4);
+  g.strokeStyle = phase === 'white' ? '#f3efe6' : '#8fa3c4';
+  g.beginPath();
+  for (let i = 0; i < x.length; i += block) {
+    const d = Math.max(floor, db(peakOf(x.subarray(i, i + block)) / peak));
+    const px = (i / SR / T) * w;
+    i === 0 ? g.moveTo(px, yOf(d)) : g.lineTo(px, yOf(d));
+  }
+  g.stroke();
+  g.fillStyle = '#555'; g.fillRect((durationS / T) * w, 0, 1, h);
+}
+
+// Partials on a log axis, 100 Hz to 10 kHz, over Patterson's bands.
+function drawSpectrum(cv, p, phase) {
+  const [g, w, h] = sizeCanvas(cv);
+  const xOf = (f) => (Math.log10(f / 100) / 2) * w;
+  g.fillStyle = 'rgba(80,140,80,.18)'; g.fillRect(xOf(150), 0, xOf(1000) - xOf(150), h);
+  g.fillStyle = 'rgba(80,110,170,.18)'; g.fillRect(xOf(1000), 0, xOf(4000) - xOf(1000), h);
+  g.fillStyle = 'rgba(170,60,60,.15)'; g.fillRect(0, 0, xOf(500), 12);
+  g.fillStyle = '#6a6'; g.font = '10px ui-monospace, monospace'; g.fillText('fundamental 150–1000 Hz', xOf(150) + 3, h - 4);
+  g.fillStyle = '#68a'; g.fillText('≥4 partials 1–4 kHz', xOf(1000) + 3, h - 4);
+  g.fillStyle = '#a66'; g.fillText('phone speaker weak', 3, 10);
+  const amps = p.partials.map(([r, , a]) => a * Math.pow(r, -p.softness));
+  const max = Math.max(...amps);
+  g.fillStyle = phase === 'white' ? '#f3efe6' : '#8fa3c4';
+  p.partials.forEach(([r], i) => {
+    const bh = Math.max(2, (amps[i] / max) * (h - 30));
+    g.fillRect(xOf(p.f0 * r) - 1, h - 16 - bh, 3, bh);
+  });
+}
+
+function download(phase) {
+  const { x } = state[phase].rendered;
+  const pcm = new DataView(new ArrayBuffer(44 + x.length * 2));
+  const str = (o, s) => [...s].forEach((c, i) => pcm.setUint8(o + i, c.charCodeAt(0)));
+  str(0, 'RIFF'); pcm.setUint32(4, 36 + x.length * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+  pcm.setUint32(16, 16, true); pcm.setUint16(20, 1, true); pcm.setUint16(22, 1, true);
+  pcm.setUint32(24, SR, true); pcm.setUint32(28, SR * 2, true); pcm.setUint16(32, 2, true); pcm.setUint16(34, 16, true);
+  str(36, 'data'); pcm.setUint32(40, x.length * 2, true);
+  x.forEach((v, i) => pcm.setInt16(44 + i * 2, Math.round(Math.max(-1, Math.min(1, v)) * 32767), true));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([pcm], { type: 'audio/wav' }));
+  a.download = `${current}-${VARIANTS[current].name.toLowerCase().replace(/\W+/g, '-')}-${phase}.wav`;
+  a.click();
+}
+
+// ---------- Session: rings at random gaps, alternating phases ----------
+let timer = null, round = 0, next = 'white';
+function scheduleNext() {
+  const min = +document.getElementById('minS').value, max = Math.max(min, +document.getElementById('maxS').value);
+  const gap = min + Math.random() * (max - min);
+  log(`next: ${next} in ${gap.toFixed(1)} s`);
+  timer = setTimeout(() => {
+    if (next === 'white') round++;
+    play(next);
+    log(`round ${round} · ${next} · variant ${current}`);
+    next = next === 'white' ? 'black' : 'white';
+    scheduleNext();
+  }, gap * 1000);
+}
+function log(line) {
+  const el = document.getElementById('log');
+  el.textContent = `${new Date().toLocaleTimeString()}  ${line}\n` + el.textContent;
+}
+document.getElementById('sessionBtn').onclick = (e) => {
+  if (timer) { clearTimeout(timer); timer = null; e.target.textContent = 'Start session'; log('stopped'); return; }
+  audio(); round = 0; next = 'white'; e.target.textContent = 'Stop session';
+  play('white'); round = 1; log(`round 1 · white · variant ${current}`); next = 'black';
+  scheduleNext();
+};
+
+// ---------- Switcher ----------
+function go(step) {
+  const key = keys[(keys.indexOf(current) + step + keys.length) % keys.length];
+  const url = new URL(location.href);
+  url.searchParams.set('variant', key);
+  history.replaceState(null, '', url);
+  load(key);
+}
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); go(e.key === 'ArrowLeft' ? -1 : 1); }
+});
+
+load(new URLSearchParams(location.search).get('variant') ?? 'A');
+</script>
+</body>
+</html>

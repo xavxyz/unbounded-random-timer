@@ -30,7 +30,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prototype:bells": "open scripts/prototype-bell-sounds.html"
   },
   "private": true,
   "jest": {
