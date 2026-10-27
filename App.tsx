@@ -2,8 +2,9 @@ import { StatusBar } from 'expo-status-bar';
 import { Unbounded_900Black, useFonts } from '@expo-google-fonts/unbounded';
 import { useCallback, useMemo } from 'react';
 import { Animated, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { Emblem } from './src/Emblem';
 import { KeepAwake } from './src/KeepAwake';
-import { PHASE_COLOURS, SETUP_GREY } from './src/palette';
+import { PHASE_COLOURS, SETUP_COLOURS } from './src/palette';
 import { formatElapsed } from './src/sessionClock';
 import { DEFAULT_SETUP, sessionSetupOf } from './src/setup';
 import { SetupCards } from './src/SetupCards';
@@ -30,20 +31,21 @@ export default function App() {
   // Until the face loads the round stays hidden, rather than flashing in the system font.
   // Should it fail to load, the round falls back to the system font.
   const [fontLoaded, fontError] = useFonts({ Unbounded_900Black });
-  const colours = snapshot ? PHASE_COLOURS[snapshot.phase] : SETUP_GREY;
+  const colours = snapshot ? PHASE_COLOURS[snapshot.phase] : SETUP_COLOURS;
   const { background, ink } = useColourFade(colours);
-  // The setup screen fades in with the grey, so nothing sits at full contrast on a fading White or Black.
+  // The setup screen fades in with the background, so nothing sits at full contrast on a fading White or Black.
   const showingSetup = !snapshot && setup != null;
   const setupOpacity = useFadeIn(showingSetup);
 
   return (
-    // The whole screen is the control: tapping the grey begins, holding stops.
-    // Touches on the setup cards stay with the cards.
+    // The whole screen is the control: tapping it begins, holding stops.
+    // Touches on the setup cards stay with the cards; the Emblem lets them through.
     <Pressable style={styles.screen} {...pressHandlers}>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: background }]} />
       {snapshot && <KeepAwake />}
       {showingSetup && (
         <Animated.View style={[styles.setup, { opacity: setupOpacity }]}>
+          <Emblem />
           <SetupCards setup={setup} onChange={setSetup} />
         </Animated.View>
       )}
