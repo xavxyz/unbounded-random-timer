@@ -73,25 +73,34 @@ export function Emblem({ turning }: { turning: boolean }) {
   // sweep waits for it, or resetting `swept` would stop the new sweep.
   const settled = useRef(Promise.resolve());
 
-  // One long native animation, so the sweep never hitches. It runs until every
-  // gear has come round whole, so starting over doesn't show. Until the Reduce
-  // Motion setting is known, the Emblem holds still.
+  // The sweep runs on the native driver one taiji turn at a time, then folds
+  // that turn into `rested` and sweeps the next. A native timing builds a frame
+  // for every 1/60 s of its duration as it starts: one sweep until every gear
+  // came round whole (1155 turns) held the JS thread for a quarter of a second,
+  // and the setup screen's fades skipped. Until the Reduce Motion setting is
+  // known, the Emblem holds still.
   useEffect(() => {
     if (reduceMotion !== false || !turning) return;
     let animation: Animated.CompositeAnimation | null = null;
     let cancelled = false;
-    settled.current.then(() => {
+    const sweep = () => {
       if (cancelled) return;
-      animation = Animated.loop(
-        Animated.timing(swept, {
-          toValue: TRAIN.repeatTurns,
-          duration: TRAIN.repeatTurns * TAIJI_TURN_MS,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        }),
-      );
-      animation.start();
-    });
+      animation = Animated.timing(swept, {
+        toValue: 1,
+        duration: TAIJI_TURN_MS,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      });
+      animation.start(({ finished }) => {
+        if (!finished || cancelled) return;
+        // Every gear has come round whole after `repeatTurns`, so wrapping doesn't show.
+        restedTurns.current = (restedTurns.current + 1) % TRAIN.repeatTurns;
+        rested.setValue(restedTurns.current);
+        swept.setValue(0);
+        sweep();
+      });
+    };
+    settled.current.then(sweep);
     return () => {
       cancelled = true;
       if (!animation) return;
