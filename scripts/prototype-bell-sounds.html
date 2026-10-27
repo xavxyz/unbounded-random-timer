@@ -73,7 +73,7 @@
 <body>
 <details class="intro" open>
   <summary>How to use</summary>
-  <p>Four starting points for the <b>White</b> and <b>Black</b> sounds (switch with the yellow bar). Each must be noticed with eyes closed without startling, be told apart from the other by ear, and fit the shortest 5 s gap between rings.</p>
+  <p>The chosen <b>White</b> and <b>Black</b> sounds (E), and the four starting points they came from (switch with the yellow bar). Each must be noticed with eyes closed without startling, be told apart from the other by ear, and fit the shortest 5 s gap between rings.</p>
   <p>Ring them, shape them with the sliders, and try <b>Start session</b> to hear them as they'd arrive in practice. When you like one, press <b>Copy params</b> on White and on Black and send both back, or <b>Download .wav</b>.</p>
 </details>
 <h1 id="title"></h1>
@@ -162,6 +162,24 @@ const VARIANTS = {
     ],
     white: { f0: 1000, tauScale: 1, durationS: 4, softness: 0, beat: 1, partials: risset(4), strikes: [[0, 1]] },
     black: { f0: 600, tauScale: 1.1, durationS: 4.5, softness: 0, beat: 1, partials: risset(4), strikes: [[0, 1], [0.5, 0.8]] },
+  },
+  E: {
+    name: 'Chosen',
+    why: [
+      'The sounds chosen from B (rin bowl), now built into the app.',
+      'White: 302 Hz, one strike, long ring (×3) with a slow beat (×0.3, under 1 Hz).',
+      'Black: 329 Hz, two strikes 600 ms apart, shorter ring (×1.8) with a fast beat (×3, about 4 Hz).',
+    ],
+    white: {
+      f0: 302, tauScale: 3, durationS: 5, softness: 0.25, beat: 0.3,
+      partials: [[1, 0, 1, 0.55], [1, 1.4, 0.8, 0.55], [2.78, 0, 0.6, 0.32], [2.78, 2.2, 0.5, 0.3], [5.18, 0, 0.3, 0.16], [8.16, 0, 0.15, 0.09], [11.66, 0, 0.08, 0.06]],
+      strikes: [[0, 1]],
+    },
+    black: {
+      f0: 329, tauScale: 1.8, durationS: 5, softness: 0.3, beat: 3,
+      partials: [[1, 0, 1, 0.55], [1, 1.4, 0.8, 0.55], [2.78, 0, 0.6, 0.32], [2.78, 2.2, 0.5, 0.3], [5.18, 0, 0.3, 0.16], [8.16, 0, 0.15, 0.09], [11.66, 0, 0.08, 0.06]],
+      strikes: [[0, 1], [0.6, 0.8]],
+    },
   },
 };
 
@@ -281,7 +299,7 @@ let current;
 let state;
 
 function load(key) {
-  current = VARIANTS[key] ? key : 'A';
+  current = VARIANTS[key] ? key : 'E';
   const v = VARIANTS[current];
   state = {};
   for (const phase of ['white', 'black']) {
@@ -468,7 +486,7 @@ addEventListener('resize', () => {
   resizeTimer = setTimeout(() => ['white', 'black'].forEach(update), 150);
 });
 
-load(new URLSearchParams(location.search).get('variant') ?? 'A');
+load(new URLSearchParams(location.search).get('variant') ?? 'E');
 </script>
 </body>
 </html>
