@@ -17,6 +17,9 @@
   :root { color-scheme: dark; --fg: #eee; --dim: #888; --line: #333; --white: #f3efe6; --black: #8fa3c4; }
   * { box-sizing: border-box; }
   body { margin: 0; background: #111; color: var(--fg); font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; padding: 24px 24px calc(100px + env(safe-area-inset-bottom)); -webkit-text-size-adjust: 100%; }
+  .intro { max-width: 880px; margin: 0 0 20px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; color: #bbb; }
+  .intro summary { cursor: pointer; color: var(--fg); font-weight: 600; }
+  .intro p { margin: 8px 0 0; }
   h1 { font-size: 22px; margin: 0 0 4px; }
   h2 { font-size: 15px; margin: 0 0 8px; letter-spacing: .04em; text-transform: uppercase; }
   .why { color: var(--dim); max-width: 880px; margin: 0 0 20px; }
@@ -68,6 +71,12 @@
 </style>
 </head>
 <body>
+<details class="intro" open>
+  <summary>What is this?</summary>
+  <p>Sounds for a calm phone timer for Taiji / gong fu practice. Practice alternates two phases, <b>White</b> and <b>Black</b>. A sound marks the start of each, at hidden, random moments, with the practitioner's eyes often closed. So each sound must be noticed without startling, and the two must be told apart by ear alone. The shortest gap between two sounds is 5 s; the longest is 15 min.</p>
+  <p>Below are four starting points (switch with the yellow bar). Ring them, shape them with the sliders, and try <b>Start session</b> to hear them as they'd arrive in practice. Real bells, bowls and gongs are welcome as references: anything is up for change.</p>
+  <p>When you like one, press <b>Copy params</b> on White and on Black and send both back, or <b>Download .wav</b> to try them elsewhere.</p>
+</details>
 <h1 id="title"></h1>
 <ul class="why" id="why"></ul>
 <div class="phases" id="phases"></div>
