@@ -7,7 +7,7 @@ A calm phone timer for Taiji / gong fu training. It rings at hidden, random inte
 ### The session
 
 **Session**:
-One practice, from the tap that begins it to the hold that stops it.
+One practice, from the tap that begins it to the hold that stops it. It keeps running while the phone is locked or the app is left; only the hold stops it.
 
 **Round**:
 One pass through every enabled phase, in the chosen order. Rounds are numbered from 1, with no upper limit.
