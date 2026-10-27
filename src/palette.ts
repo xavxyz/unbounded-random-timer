@@ -7,9 +7,9 @@ export type Colours = {
   statusBar: 'dark' | 'light';
 };
 
-/** The idle screen, which becomes the setup screen. */
-export const SETUP_GREY: Colours = {
-  background: '#7A7A7A',
+/** The idle screen, which becomes the setup screen: the wallpaper's own near-black, so the Emblem's frame disappears into it. */
+export const SETUP_COLOURS: Colours = {
+  background: '#202020',
   ink: 'rgba(255,255,255,0.9)',
   statusBar: 'light',
 };

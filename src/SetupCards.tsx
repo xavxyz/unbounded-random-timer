@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { BoundsSheet } from './BoundsSheet';
-import { PHASE_COLOURS, SETUP_GREY } from './palette';
+import { PHASE_COLOURS, SETUP_COLOURS } from './palette';
 import type { Phase } from './phase';
 import { cardsOf, formatBounds, setBounds, setPhaseEnabled, swapOrder, type Setup } from './setup';
 
@@ -10,7 +10,7 @@ type Props = { setup: Setup; onChange: (setup: Setup) => void };
 /**
  * The phase cards in round order, with the swap control between them. Tapping
  * a card opens the sheet that sets its bounds. Every touch on them stays here,
- * so it never reaches the grey that starts a session.
+ * so it never reaches the screen behind, which starts a session.
  */
 export function SetupCards({ setup, onChange }: Props) {
   const cards = cardsOf(setup);
@@ -45,7 +45,7 @@ export function SetupCards({ setup, onChange }: Props) {
               onPress={() => setEditing(card.phase)}
             >
               <Text style={[styles.bounds, { color: ink }]}>{formatBounds(card.bounds)}</Text>
-              {/* The native switch handles its own touch; this wrapper keeps it from the grey. */}
+              {/* The native switch handles its own touch; this wrapper keeps it from the screen behind. */}
               <View onStartShouldSetResponder={() => true}>
                 <Switch
                   value={card.enabled}
@@ -93,6 +93,6 @@ const styles = StyleSheet.create({
   },
   swapGlyph: {
     fontSize: 24,
-    color: SETUP_GREY.ink,
+    color: SETUP_COLOURS.ink,
   },
 });
