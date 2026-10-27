@@ -3,7 +3,7 @@
 # ///
 """
 Cuts the Emblem's frame out of the wallpaper: the case, motto band, screws and
-crown, with a transparent centre for the drawn movement to show through
+crown, with a transparent centre for the drawn gears to show through
 (see docs/adr/0001-emblem-frame-from-wallpaper.md).
 
     uv run scripts/cut-emblem-frame.py ~/Pictures/onepart.jpg assets/emblem-frame.png
@@ -17,7 +17,7 @@ from PIL import Image
 CX, CY, R = 1559, 921, 468
 # The frame spans the Emblem's -110..110 drawing units; the case's outer edge is at 99.
 HALF = R * 110 / 99
-# The inner silver ring's edge, as a share of the case's radius: inside it is the movement.
+# The inner silver ring's edge, as a share of the case's radius: inside it are the gears.
 INNER = 0.755
 FEATHER = 2.5
 SIZE = 1024

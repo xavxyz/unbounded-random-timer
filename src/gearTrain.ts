@@ -15,9 +15,13 @@ export type Gear = {
   ratio: number;
 };
 
-const TAU = 2 * Math.PI;
+export const TAU = 2 * Math.PI;
 
 export const pitchRadius = (gear: Gear) => (gear.module * gear.teeth) / 2;
+/** Where the tips of the teeth reach: one module past the pitch circle. */
+export const outerRadius = (gear: Gear) => pitchRadius(gear) + gear.module;
+/** Where the gaps between the teeth bottom out: a quarter-module deeper than the teeth stand, for clearance. */
+export const rootRadius = (gear: Gear) => pitchRadius(gear) - 1.25 * gear.module;
 
 /** The wheel that drives the train, centred on the origin. */
 export function driveWheel(teeth: number, module: number): Gear {

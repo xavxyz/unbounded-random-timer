@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Animated, Easing, Image, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Defs, Line, Path, RadialGradient, Stop } from 'react-native-svg';
-import { driveWheel, meshWith, pitchRadius, turnsUntilRepeat, type Gear } from './gearTrain';
+import { driveWheel, meshWith, outerRadius, pitchRadius, rootRadius, TAU, turnsUntilRepeat, type Gear } from './gearTrain';
 import { PHASE_COLOURS } from './palette';
 import { useReduceMotion } from './useReduceMotion';
 
@@ -14,7 +14,7 @@ const FRAME = require('../assets/emblem-frame.png');
 const TAIJI_TURN_MS = 60_000;
 /** The taiji's radius, and its silver bezel's; the drive wheel's teeth show just outside the bezel. */
 const TAIJI = { radius: 34.5, bezel: 37 };
-/** The plate under the movement, shading to dark at the frame's inner edge and reaching just under it. */
+/** The plate under the gears, shading to dark at the frame's inner edge and reaching just under it. */
 const PLATE = { shadedTo: 77, radius: 80 };
 const EDGE = '#1a1a1a';
 
@@ -28,7 +28,7 @@ type Wheel = { gear: Gear; spokes: number; tier: Tier };
  * half hidden, meshes with the drive wheel's own lower tier, so it overlaps the
  * upper gears rather than colliding with them, and no plate shows between them.
  */
-function train() {
+function wallpaperTrain() {
   const drive = driveWheel(48, 1.6);
   const left = meshWith(drive, 18, 180);
   const top = meshWith(drive, 24, -98);
@@ -51,11 +51,11 @@ function train() {
   return { drive, wheels, repeatTurns: turnsUntilRepeat([drive, ...wheels.map((w) => w.gear)]) };
 }
 
-const TRAIN = train();
+const TRAIN = wallpaperTrain();
 
 /**
- * The turning mechanism above the setup cards: the wallpaper's own case over a
- * drawn movement. The taiji turns clockwise in one even sweep and every gear
+ * The turning mechanism above the setup cards: the wallpaper's own case over
+ * drawn gears. The taiji turns clockwise in one even sweep and every gear
  * follows at its tooth ratio. It holds still under Reduce Motion, and lets
  * touches through to the screen.
  */
@@ -69,29 +69,42 @@ export function Emblem() {
   const rested = useRef(new Animated.Value(0)).current;
   const swept = useRef(new Animated.Value(0)).current;
   const turns = useRef(Animated.add(rested, swept)).current;
+  // Where the last sweep stopped comes back from the native side later. A new
+  // sweep waits for it, or resetting `swept` would stop the new sweep.
+  const settled = useRef(Promise.resolve());
 
   // One long native animation, so the sweep never hitches. It runs until every
   // gear has come round whole, so starting over doesn't show. Until the Reduce
   // Motion setting is known, the Emblem holds still.
   useEffect(() => {
     if (reduceMotion !== false) return;
-    const animation = Animated.loop(
-      Animated.timing(swept, {
-        toValue: TRAIN.repeatTurns,
-        duration: TRAIN.repeatTurns * TAIJI_TURN_MS,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-    );
-    animation.start();
+    let animation: Animated.CompositeAnimation | null = null;
+    let cancelled = false;
+    settled.current.then(() => {
+      if (cancelled) return;
+      animation = Animated.loop(
+        Animated.timing(swept, {
+          toValue: TRAIN.repeatTurns,
+          duration: TRAIN.repeatTurns * TAIJI_TURN_MS,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      );
+      animation.start();
+    });
     return () => {
+      cancelled = true;
+      if (!animation) return;
       animation.stop();
       // Should it start again, it sweeps on from where it stopped.
-      swept.stopAnimation((value) => {
-        restedTurns.current = (restedTurns.current + value) % TRAIN.repeatTurns;
-        rested.setValue(restedTurns.current);
-        swept.setValue(0);
-      });
+      settled.current = new Promise((resolve) =>
+        swept.stopAnimation((value) => {
+          restedTurns.current = (restedTurns.current + value) % TRAIN.repeatTurns;
+          rested.setValue(restedTurns.current);
+          swept.setValue(0);
+          resolve();
+        }),
+      );
     };
   }, [reduceMotion, rested, swept]);
 
@@ -103,7 +116,7 @@ export function Emblem() {
     }),
   });
 
-  const place = (gear: Gear) => {
+  const wheelStyle = (gear: Gear) => {
     const r = outerRadius(gear);
     return {
       position: 'absolute' as const,
@@ -127,11 +140,11 @@ export function Emblem() {
         <Circle r={PLATE.radius} fill="url(#plate)" />
       </Svg>
       {TRAIN.wheels.map((wheel, i) => (
-        <Animated.View key={i} style={place(wheel.gear)}>
+        <Animated.View key={i} style={wheelStyle(wheel.gear)}>
           <WheelDrawing {...wheel} />
         </Animated.View>
       ))}
-      <Animated.View style={place(TRAIN.drive)}>
+      <Animated.View style={wheelStyle(TRAIN.drive)}>
         <DriveWheelDrawing gear={TRAIN.drive} />
       </Animated.View>
       <Image source={FRAME} style={[styles.frame, { width: size, height: size }]} resizeMode="stretch" />
@@ -139,9 +152,6 @@ export function Emblem() {
   );
 }
 
-const TAU = 2 * Math.PI;
-const outerRadius = (gear: Gear) => pitchRadius(gear) + gear.module;
-const rootRadius = (gear: Gear) => pitchRadius(gear) - 1.25 * gear.module;
 const rimRadius = (gear: Gear) => rootRadius(gear) - 1.4 * gear.module;
 const hubRadius = (gear: Gear) => Math.max(2.2, 0.22 * pitchRadius(gear));
 
@@ -211,7 +221,7 @@ function WheelDrawing({ gear, spokes, tier }: Wheel) {
   const hub = hubRadius(gear);
   const screw = hub * 0.55;
   const slot = gear.toothAngle + Math.PI / 4;
-  const spokesD = spokesPath(gear, spokes);
+  const spokeLines = spokesPath(gear, spokes);
   return (
     <GearSvg gear={gear} tier={tier}>
       <Path
@@ -222,8 +232,8 @@ function WheelDrawing({ gear, spokes, tier }: Wheel) {
         strokeWidth={0.45}
         strokeLinejoin="round"
       />
-      <Path d={spokesD} stroke={EDGE} strokeWidth={gear.module * 1.5 + 0.9} strokeLinecap="round" />
-      <Path d={spokesD} stroke="#c9c9c9" strokeWidth={gear.module * 1.5} strokeLinecap="round" />
+      <Path d={spokeLines} stroke={EDGE} strokeWidth={gear.module * 1.5 + 0.9} strokeLinecap="round" />
+      <Path d={spokeLines} stroke="#c9c9c9" strokeWidth={gear.module * 1.5} strokeLinecap="round" />
       <Circle r={hub} fill="url(#silver)" stroke={EDGE} strokeWidth={0.45} />
       <Circle r={screw} fill={SILVER[tier].screw} stroke={EDGE} strokeWidth={0.4} />
       <Line
