@@ -9,7 +9,7 @@ import { formatElapsed } from './src/sessionClock';
 import { DEFAULT_SETUP, sessionSetupOf } from './src/setup';
 import { SetupCards } from './src/SetupCards';
 import { useColourFade } from './src/useColourFade';
-import { useFadeIn } from './src/useFadeIn';
+import { useFade } from './src/useFade';
 import { useSavedSetup } from './src/useSavedSetup';
 import { useScreenGesture } from './src/useScreenGesture';
 import { useSession } from './src/useSession';
@@ -32,10 +32,11 @@ export default function App() {
   // Should it fail to load, the round falls back to the system font.
   const [fontLoaded, fontError] = useFonts({ Unbounded_900Black });
   const colours = snapshot ? PHASE_COLOURS[snapshot.phase] : SETUP_COLOURS;
-  const { background, ink } = useColourFade(colours);
-  // The setup screen fades in with the background, so nothing sits at full contrast on a fading White or Black.
+  // The app opens on Black's black (app.json's backgroundColor) and fades up from it.
+  const { background, ink } = useColourFade(colours, PHASE_COLOURS.black);
+  // The setup screen fades in and out with the background, so nothing sits at full contrast on a fading White or Black.
   const showingSetup = !snapshot && setup != null;
-  const setupOpacity = useFadeIn(showingSetup);
+  const setupFade = useFade(showingSetup);
 
   return (
     // The whole screen is the control: tapping it begins, holding stops.
@@ -43,8 +44,12 @@ export default function App() {
     <Pressable style={styles.screen} {...pressHandlers}>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: background }]} />
       {snapshot && <KeepAwake />}
-      {showingSetup && (
-        <Animated.View style={[styles.setup, { opacity: setupOpacity }]}>
+      {setupFade.mounted && setup && (
+        // Fading out over a session, it lets touches through to hold to stop.
+        <Animated.View
+          style={[styles.setup, { opacity: setupFade.opacity }]}
+          pointerEvents={showingSetup ? 'auto' : 'none'}
+        >
           <Emblem />
           <SetupCards setup={setup} onChange={setSetup} />
         </Animated.View>
@@ -64,11 +69,10 @@ export default function App() {
       {snapshot && (
         <Animated.Text style={[styles.elapsed, { color: ink }]}>{formatElapsed(snapshot.elapsedMs)}</Animated.Text>
       )}
-      {(snapshot || setup) && (
-        <Animated.Text style={[styles.hint, { color: ink, opacity: snapshot ? 1 : setupOpacity }]}>
-          {snapshot ? 'hold anywhere to stop' : 'tap to begin'}
-        </Animated.Text>
+      {setupFade.mounted && (
+        <Animated.Text style={[styles.hint, { color: ink, opacity: setupFade.opacity }]}>tap to begin</Animated.Text>
       )}
+      {snapshot && <Animated.Text style={[styles.hint, { color: ink }]}>hold anywhere to stop</Animated.Text>}
       <StatusBar style={colours.statusBar} />
     </Pressable>
   );
@@ -80,8 +84,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Laid over the screen, so the round stays centred while the setup fades out.
   setup: {
-    width: '100%',
+    position: 'absolute',
+    inset: 0,
+    justifyContent: 'center',
   },
   round: {
     fontFamily: 'Unbounded_900Black',

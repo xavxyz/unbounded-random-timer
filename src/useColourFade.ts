@@ -4,12 +4,12 @@ import { COLOUR_FADE_MS, type Colours } from './palette';
 
 /**
  * Fades the screen's background and ink to `target` over `COLOUR_FADE_MS`
- * whenever it changes. A change mid-fade starts the next fade from where the
- * previous one was heading.
+ * whenever it changes, and from `initial` to `target` on mount. A change
+ * mid-fade starts the next fade from where the previous one was heading.
  */
-export function useColourFade(target: Colours) {
+export function useColourFade(target: Colours, initial: Colours = target) {
   const progress = useRef(new Animated.Value(1)).current;
-  const [fade, setFade] = useState({ from: target, to: target });
+  const [fade, setFade] = useState({ from: initial, to: target });
 
   if (fade.to !== target) setFade({ from: fade.to, to: target });
 
