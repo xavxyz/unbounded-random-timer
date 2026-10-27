@@ -3,7 +3,7 @@ import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { ringFromTop } from './bell';
 import type { Phase } from './phase';
 
-// Each phase owns its sound: the soft bell for White, a lower double strike for Black.
+// Each phase owns its sound, one singing bowl: struck once for White, twice for Black.
 // Synthesised by scripts/synthesize-bell.mjs; swap in any recording.
 const WHITE_SOUND = require('../assets/bell.wav');
 const BLACK_SOUND = require('../assets/black.wav');
