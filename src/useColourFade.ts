@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, Easing } from 'react-native';
 import { COLOUR_FADE_MS, type Colours } from './palette';
 
@@ -8,14 +8,14 @@ import { COLOUR_FADE_MS, type Colours } from './palette';
  * mid-fade starts the next fade from where the previous one was heading.
  */
 export function useColourFade(target: Colours, initial: Colours = target) {
-  const progress = useRef(new Animated.Value(1)).current;
-  const [fade, setFade] = useState({ from: initial, to: target });
+  // Each fade has its own progress, starting at 0, so the first frame of a
+  // fade draws where it comes from rather than flashing where it's going.
+  const [fade, setFade] = useState(() => ({ from: initial, to: target, progress: new Animated.Value(0) }));
 
-  if (fade.to !== target) setFade({ from: fade.to, to: target });
+  if (fade.to !== target) setFade({ from: fade.to, to: target, progress: new Animated.Value(0) });
 
   useEffect(() => {
-    progress.setValue(0);
-    const animation = Animated.timing(progress, {
+    const animation = Animated.timing(fade.progress, {
       toValue: 1,
       duration: COLOUR_FADE_MS,
       easing: Easing.inOut(Easing.ease),
@@ -24,13 +24,13 @@ export function useColourFade(target: Colours, initial: Colours = target) {
     });
     animation.start();
     return () => animation.stop();
-  }, [fade, progress]);
+  }, [fade]);
 
   return {
-    background: progress.interpolate({
+    background: fade.progress.interpolate({
       inputRange: [0, 1],
       outputRange: [fade.from.background, fade.to.background],
     }),
-    ink: progress.interpolate({ inputRange: [0, 1], outputRange: [fade.from.ink, fade.to.ink] }),
+    ink: fade.progress.interpolate({ inputRange: [0, 1], outputRange: [fade.from.ink, fade.to.ink] }),
   };
 }

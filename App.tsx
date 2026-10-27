@@ -14,6 +14,9 @@ import { useSavedSetup } from './src/useSavedSetup';
 import { useScreenGesture } from './src/useScreenGesture';
 import { useSession } from './src/useSession';
 
+/** Beginning a session clears the setup screen quickly, ahead of the colour fade. */
+const SETUP_FADE_OUT_MS = 300;
+
 // Unbounded's digits average 0.87 em wide: 0.38 × 0.87 ≈ a third of the screen per digit.
 const ROUND_FONT_SIZE_PER_WIDTH = 0.38;
 
@@ -36,7 +39,7 @@ export default function App() {
   const { background, ink } = useColourFade(colours, PHASE_COLOURS.black);
   // The setup screen fades in and out with the background, so nothing sits at full contrast on a fading White or Black.
   const showingSetup = !snapshot && setup != null;
-  const setupFade = useFade(showingSetup);
+  const setupFade = useFade(showingSetup, SETUP_FADE_OUT_MS);
 
   return (
     // The whole screen is the control: tapping it begins, holding stops.

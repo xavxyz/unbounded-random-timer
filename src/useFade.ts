@@ -3,12 +3,12 @@ import { Animated, Easing } from 'react-native';
 import { COLOUR_FADE_MS } from './palette';
 
 /**
- * An opacity that fades in over `COLOUR_FADE_MS` when `shown` turns true and
- * out when it turns false, alongside the screen's colour fade. `mounted` stays
+ * An opacity that fades in over `COLOUR_FADE_MS` when `shown` turns true,
+ * alongside the screen's colour fade, and out over `outMs` when it turns false. `mounted` stays
  * true until the fade out ends, so what fades can stay on screen until then.
  * A change mid-fade turns the fade round from where it is.
  */
-export function useFade(shown: boolean) {
+export function useFade(shown: boolean, outMs = COLOUR_FADE_MS) {
   const opacity = useRef(new Animated.Value(0)).current;
   const [mounted, setMounted] = useState(shown);
 
@@ -17,7 +17,7 @@ export function useFade(shown: boolean) {
   useEffect(() => {
     const animation = Animated.timing(opacity, {
       toValue: shown ? 1 : 0,
-      duration: COLOUR_FADE_MS,
+      duration: shown ? COLOUR_FADE_MS : outMs,
       easing: Easing.inOut(Easing.ease),
       // Kept off the native driver, like the colour fade it shares views with.
       useNativeDriver: false,
@@ -26,7 +26,7 @@ export function useFade(shown: boolean) {
       if (finished && !shown) setMounted(false);
     });
     return () => animation.stop();
-  }, [shown, opacity]);
+  }, [shown, outMs, opacity]);
 
   return { opacity, mounted };
 }

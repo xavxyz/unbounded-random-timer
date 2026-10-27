@@ -5,10 +5,13 @@ import { createScreenGesture, HOLD_TO_STOP_MS } from './screenGesture';
 
 /** How fast the round number comes back when a hold to stop is abandoned. */
 const HOLD_ABANDONED_RETURN_MS = 250;
+/** Round 1 waits for the setup screen to clear, then fades in as the colour fade settles. */
+const ROUND_ONE_DELAY_MS = 500;
+const ROUND_ONE_FADE_IN_MS = 500;
 
 /**
- * Press handlers for the whole screen: tap to start, hold to stop. While
- * holding, `roundOpacity` fades the round number into the background over
+ * Press handlers for the whole screen: tap to start, hold to stop. On start,
+ * `roundOpacity` fades round 1 in after a pause. While holding, `roundOpacity` fades the round number into the background over
  * `HOLD_TO_STOP_MS`, and brings it back if the hold is abandoned. A firm
  * haptic marks the stop, with no bell.
  */
@@ -19,10 +22,11 @@ export function useScreenGesture(running: boolean, start: () => void, stop: () =
   const roundOpacity = useRef(new Animated.Value(1)).current;
 
   const [gesture] = useState(() => {
-    const fadeRoundTo = (toValue: number, duration: number) =>
+    const fadeRoundTo = (toValue: number, duration: number, delay = 0) =>
       Animated.timing(roundOpacity, {
         toValue,
         duration,
+        delay,
         easing: Easing.linear,
         useNativeDriver: true,
       }).start();
@@ -30,7 +34,8 @@ export function useScreenGesture(running: boolean, start: () => void, stop: () =
     return createScreenGesture({
       isRunning: () => latest.current.running,
       onStart: () => {
-        roundOpacity.setValue(1);
+        roundOpacity.setValue(0);
+        fadeRoundTo(1, ROUND_ONE_FADE_IN_MS, ROUND_ONE_DELAY_MS);
         latest.current.start();
       },
       onStop: () => {
